@@ -43,6 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return typeof path === 'string' && path.startsWith('assets/') ? `Backend/${path}` : path;
   }
 
+  function resolveImageUrl(path) {
+    const normalizedPath = normalizeAssetPath(path);
+    return new URL(normalizedPath, new URL('../', document.baseURI)).href;
+  }
+
   async function verifyAdmin() {
     const { data: { session }, error } = await client.auth.getSession();
     if (error) throw error;
@@ -74,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     row.className = 'product-row';
 
     const image = document.createElement('img');
-    image.src = normalizeAssetPath(product.image_url);
+    image.src = resolveImageUrl(product.image_url);
     image.alt = '';
     image.loading = 'lazy';
     row.append(image);
