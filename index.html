@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f2ea" />
+    <title>shues — Good shoes, good miles</title>
+    <meta
+      name="description"
+      content="Thoughtfully selected sneakers, runners and everyday shoes. Free delivery over Rs. 10,000, 30-day easy returns, islandwide."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#shop">Skip to shop</a>
+
+    <div class="announcement" aria-hidden="true">
+      <div class="announcement-track">
+        <div class="announcement-group">
+          <span>Free delivery over Rs. 10,000</span><i>✦</i>
+          <span>30-day easy returns</span><i>✦</i>
+          <span>New season, just landed</span><i>✦</i>
+          <span>Pay on delivery available</span><i>✦</i>
+        </div>
+        <div class="announcement-group">
+          <span>Free delivery over Rs. 10,000</span><i>✦</i>
+          <span>30-day easy returns</span><i>✦</i>
+          <span>New season, just landed</span><i>✦</i>
+          <span>Pay on delivery available</span><i>✦</i>
+        </div>
+      </div>
+    </div>
+
+    <header class="site-header" id="site-header">
+      <button
+        class="menu-trigger"
+        type="button"
+        aria-label="Open categories"
+        aria-expanded="false"
+        aria-controls="main-nav"
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+          <path d="M4 7h16M4 12h16M4 17h10" />
+        </svg>
+      </button>
+
+      <a class="wordmark" href="#home" aria-label="shues home">
+        <span class="wordmark-icon" aria-hidden="true">S</span>
+        <span>shues<span class="brand-dot">.</span></span>
+      </a>
+
+      <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+        <a href="#shop">New arrivals</a>
+        <a href="#shop" data-nav-filter="men">Men</a>
+        <a href="#shop" data-nav-filter="women">Women</a>
+        <a href="#categories">Collections</a>
+        <a href="#story">Our story</a>
+      </nav>
+
+      <div class="header-tools">
+        <button class="search-trigger" type="button" aria-label="Search shoes">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" />
+            <path d="m16 16 4.5 4.5" />
+          </svg>
+        </button>
+        <button class="cart-trigger" type="button" aria-label="Open shopping bag">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path d="M4.8 8h14.4L18 20H6L4.8 8Z" />
+            <path d="M9 8V6.2a3 3 0 0 1 6 0V8" />
+          </svg>
+          <span class="cart-label">Bag</span>
+          <span class="cart-count" aria-live="polite">0</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="home">
+      <section class="hero">
+        <div class="hero-image-wrap">
+          <img
+            class="hero-image"
+            src="assets/hero.jpg"
+            alt="A bright red running shoe, ready for the city"
+          />
+          <div class="hero-stamp" aria-hidden="true">
+            <span>GOOD SHOES</span>
+            <b>GOOD MILES</b>
+            <span>EST. 2021</span>
+          </div>
+
+          <div class="hero-copy">
+            <p class="eyebrow"><span></span>Everyday footwear, picked for you</p>
+            <h1>Find your<br /><em>perfect pair.</em></h1>
+            <p class="hero-description">
+              Sneakers, slides and everyday styles made for wherever you're headed.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-light" href="#shop">
+                Shop new arrivals <span aria-hidden="true">↗</span>
+              </a>
+              <a class="text-link" href="#story">Our story</a>
+            </div>
+            <ul class="hero-stats">
+              <li><strong>4.9★</strong><span>2,400+ reviews</span></li>
+              <li><strong>48h</strong><span>Islandwide delivery</span></li>
+              <li><strong>30d</strong><span>Easy returns</span></li>
+            </ul>
+          </div>
+
+          <div class="hero-image-caption">
+            <span>THE EVERYDAY COLLECTION</span>
+            <span>COLOMBO · SRI LANKA</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker-track">
+          <span>Comfort, craft &amp; character</span><i>✦</i>
+          <span>Free delivery over Rs. 10,000</span><i>✦</i>
+          <span>New pairs every week</span><i>✦</i>
+          <span>30-day easy returns</span><i>✦</i>
+          <span>Comfort, craft &amp; character</span><i>✦</i>
+          <span>Free delivery over Rs. 10,000</span><i>✦</i>
+          <span>New pairs every week</span><i>✦</i>
+          <span>30-day easy returns</span><i>✦</i>
+        </div>
+      </div>
+
+      <section class="shop-section" id="shop">
+        <div class="shop-heading" data-reveal>
+          <div>
+            <p class="eyebrow"><span></span>Fresh from the shelves</p>
+            <h2>New arrivals<span class="accent-dot">.</span></h2>
+          </div>
+          <p class="product-total"><span id="result-count">6</span> styles to explore</p>
+        </div>
+
+        <div class="shop-toolbar" data-reveal>
+          <div class="category-list" role="group" aria-label="Filter by category">
+            <button class="category-button is-active" type="button" data-filter="all" aria-pressed="true">All styles</button>
+            <button class="category-button" type="button" data-filter="men" aria-pressed="false">Men</button>
+            <button class="category-button" type="button" data-filter="women" aria-pressed="false">Women</button>
+            <button class="category-button" type="button" data-filter="slides" aria-pressed="false">Slides</button>
+          </div>
+          <div class="shop-tools">
+            <label class="search-box">
+              <span aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <circle cx="11" cy="11" r="6.5" />
+                  <path d="m16 16 4.5 4.5" />
+                </svg>
+              </span>
+              <input id="product-search" type="search" placeholder="Find your pair" aria-label="Search shoes" />
+            </label>
+            <label class="sort-box">
+              <span class="visually-hidden">Sort products</span>
+              <select id="product-sort" aria-label="Sort products">
+                <option value="featured">Featured</option>
+                <option value="low-high">Price: low to high</option>
+                <option value="high-low">Price: high to low</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="product-grid" id="product-grid">
+          <article class="product-card" data-category="men" data-name="Pace Runner" data-price="9500" data-reveal>
+            <div class="product-image image-coral">
+              <span class="product-tag">BESTSELLER</span>
+              <button class="favorite-button" type="button" aria-label="Save Pace Runner" aria-pressed="false">♡</button>
+              <img src="assets/pace-runner.jpg" alt="Red Pace Runner sneaker" loading="lazy" decoding="async" />
+              <button class="quick-add" type="button">Add to bag <span aria-hidden="true">+</span></button>
+            </div>
+            <div class="product-info">
+              <div>
+                <h3>Pace Runner</h3>
+                <p>Made for the long way home</p>
+              </div>
+              <strong>Rs. 9,500</strong>
+            </div>
+            <div class="product-meta">
+              <span class="swatch swatch-red" aria-label="Red"></span>
+              <span class="swatch swatch-cream" aria-label="Cream"></span>
+              <span class="color-count">+ 2 colors</span>
+            </div>
+          </article>
+
+          <article class="product-card" data-category="women" data-name="Studio Low" data-price="10500" data-reveal>
+            <div class="product-image image-blue">
+              <span class="product-tag tag-new">JUST LANDED</span>
+              <button class="favorite-button" type="button" aria-label="Save Studio Low" aria-pressed="false">♡</button>
+              <img src="assets/studio-low.jpg" alt="White Studio Low everyday sneaker" loading="lazy" decoding="async" />
+              <button class="quick-add" type="button">Add to bag <span aria-hidden="true">+</span></button>
+            </div>
+            <div class="product-info">
+              <div>
+                <h3>Studio Low</h3>
+                <p>Your every-single-day pair</p>
+              </div>
+              <strong>Rs. 10,500</strong>
+            </div>
+            <div class="product-meta">
+              <span class="swatch swatch-cream" aria-label="White"></span>
+              <span class="swatch swatch-blue" aria-label="Blue"></span>
+              <span class="color-count">+ 1 color</span>
+            </div>
+          </article>
+
+          <article class="product-card" data-category="men" data-name="Court Classic" data-price="11000" data-reveal>
+            <div class="product-image image-lime">
+              <button class="favorite-button" type="button" aria-label="Save Court Classic" aria-pressed="false">♡</button>
+              <img src="assets/court-classic.jpg" alt="Court Classic low-top sneaker" loading="lazy" decoding="async" />
+              <button class="quick-add" type="button">Add to bag <span aria-hidden="true">+</span></button>
+            </div>
+            <div class="product-info">
+              <div>
+                <h3>Court Classic</h3>
+                <p>A little old school, all yours</p>
+              </div>
+              <strong>Rs. 11,000</strong>
+            </div>
+            <div class="product-meta">
+              <span class="swatch swatch-cream" aria-label="White"></span>
+              <span class="swatch swatch-green" aria-label="Green"></span>
+              <span class="color-count">+ 3 colors</span>
+            </div>
+          </article>
+
+          <article class="product-card" data-category="women" data-name="Cloudform Knit" data-price="12500" data-reveal>
+            <div class="product-image image-lilac">
+              <span class="product-tag">CLOUD-LIGHT</span>
+              <button class="favorite-button" type="button" aria-label="Save Cloudform Knit" aria-pressed="false">♡</button>
+              <img src="assets/cloudform-knit.jpg" alt="Cloudform Knit pastel cushioned sneaker" loading="lazy" decoding="async" />
+              <button class="quick-add" type="button">Add to bag <span aria-hidden="true">+</span></button>
+            </div>
+            <div class="product-info">
+              <div>
+                <h3>Cloudform Knit</h3>
+                <p>Soft landings, all day long</p>
+              </div>
+              <strong>Rs. 12,500</strong>
+            </div>
+            <div class="product-meta">
+              <span class="swatch swatch-gray" aria-label="Gray"></span>
+              <span class="swatch swatch-blue" aria-label="Blue"></span>
+              <span class="color-count">+ 2 colors</span>
+            </div>
+          </article>
+
+          <article class="product-card" data-category="slides" data-name="Sunday Slip-On" data-price="4500" data-reveal>
+            <div class="product-image image-yellow">
+              <span class="product-tag tag-new">EASY DOES IT</span>
+              <button class="favorite-button" type="button" aria-label="Save Sunday Slip-On" aria-pressed="false">♡</button>
+              <img src="assets/sunday-slip-on.jpg" alt="Sunday Slip-On casual shoe" loading="lazy" decoding="async" />
+              <button class="quick-add" type="button">Add to bag <span aria-hidden="true">+</span></button>
+            </div>
+            <div class="product-info">
+              <div>
+                <h3>Sunday Slip-On</h3>
+                <p>Out the door in no time</p>
+              </div>
+              <strong>Rs. 4,500</strong>
+            </div>
+            <div class="product-meta">
+              <span class="swatch swatch-blue" aria-label="Blue"></span>
+              <span class="swatch swatch-cream" aria-label="Cream"></span>
+              <span class="color-count">+ 1 color</span>
+            </div>
+          </article>
+
+          <article class="product-card" data-category="men" data-name="Field Day High" data-price="12400" data-reveal>
+            <div class="product-image image-green">
+              <button class="favorite-button" type="button" aria-label="Save Field Day High" aria-pressed="false">♡</button>
+              <img src="assets/field-day-high.jpg" alt="Field Day chunky everyday sneaker" loading="lazy" decoding="async" />
+              <button class="quick-add" type="button">Add to bag <span aria-hidden="true">+</span></button>
+            </div>
+            <div class="product-info">
+              <div>
+                <h3>Field Day High</h3>
+                <p>A classic with room to roam</p>
+              </div>
+              <strong>Rs. 12,400</strong>
+            </div>
+            <div class="product-meta">
+              <span class="swatch swatch-green" aria-label="Green"></span>
+              <span class="swatch swatch-cream" aria-label="Cream"></span>
+              <span class="color-count">+ 2 colors</span>
+            </div>
+          </article>
+        </div>
+
+        <p class="empty-state" id="empty-state" hidden>No pairs found. Try another search.</p>
+      </section>
+
+      <section class="category-section" id="categories">
+        <div class="shop-heading" data-reveal>
+          <div>
+            <p class="eyebrow"><span></span>Find your fit</p>
+            <h2>Shop by collection<span class="accent-dot">.</span></h2>
+          </div>
+        </div>
+        <div class="category-grid">
+          <a class="category-tile category-men" href="#shop" data-nav-filter="men" data-reveal>
+            <img src="assets/category-men.jpg" alt="Men's casual sneakers" loading="lazy" />
+            <span>Men <b aria-hidden="true">↗</b></span>
+          </a>
+          <a class="category-tile category-women" href="#shop" data-nav-filter="women" data-reveal>
+            <img src="assets/studio-low.jpg" alt="Women's everyday sneakers" loading="lazy" />
+            <span>Women <b aria-hidden="true">↗</b></span>
+          </a>
+          <a class="category-tile category-slides" href="#shop" data-nav-filter="slides" data-reveal>
+            <img src="assets/sunday-slip-on.jpg" alt="Easy slip-on footwear" loading="lazy" />
+            <span>Easy days <b aria-hidden="true">↗</b></span>
+          </a>
+        </div>
+      </section>
+
+      <section class="story-section" id="story" data-reveal>
+        <div class="story-photo">
+          <img src="assets/story.jpg" alt="A selection of shoes for everyday wear" loading="lazy" />
+        </div>
+        <div class="story-copy">
+          <p class="eyebrow"><span></span>Made for your everyday</p>
+          <h2>Good shoes.<br /><em>Good miles.</em></h2>
+          <p>
+            We look for comfort, craft, and the details that make a pair feel right,
+            wherever the day takes you.
+          </p>
+          <a class="text-link text-link-ink" href="#shop">Find your next pair <span aria-hidden="true">↗</span></a>
+          <span class="story-index">SHUES / SRI LANKA</span>
+        </div>
+      </section>
+
+      <section class="promise-section">
+        <div class="promise-item" data-reveal>
+          <span class="promise-number">01</span>
+          <h3>Chosen, not collected</h3>
+          <p>A small, considered range. Every pair earns its place on the shelf.</p>
+        </div>
+        <div class="promise-item" data-reveal>
+          <span class="promise-number">02</span>
+          <h3>Comfort you can feel</h3>
+          <p>Cushioning, fit and finish checked before anything ships to you.</p>
+        </div>
+        <div class="promise-item" data-reveal>
+          <span class="promise-number">03</span>
+          <h3>Easy from day one</h3>
+          <p>Free delivery over Rs. 10,000 and 30 days to change your mind.</p>
+        </div>
+      </section>
+
+      <section class="newsletter" id="newsletter">
+        <div class="newsletter-inner">
+          <p class="eyebrow eyebrow-light"><span></span>Join the list</p>
+          <h2>First dibs on<br /><em>good pairs.</em></h2>
+          <p class="newsletter-copy">New drops, restocks and small notes. No noise.</p>
+          <form class="newsletter-form">
+            <label class="visually-hidden" for="newsletter-email">Email address</label>
+            <input id="newsletter-email" type="email" placeholder="you@example.com" autocomplete="email" required />
+            <button type="submit" aria-label="Subscribe">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 12h15M13 6l6 6-6 6" />
+              </svg>
+            </button>
+          </form>
+          <p class="newsletter-note">By subscribing you agree to our privacy policy.</p>
+        </div>
+        <span class="newsletter-mark" aria-hidden="true">S</span>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a class="wordmark" href="#home" aria-label="shues home">
+            <span class="wordmark-icon" aria-hidden="true">S</span>
+            <span>shues<span class="brand-dot">.</span></span>
+          </a>
+          <p>Good shoes, out in the world.</p>
+          <span>Colombo, Sri Lanka</span>
+        </div>
+        <div class="footer-col">
+          <h4>Shop</h4>
+          <a href="#shop">New arrivals</a>
+          <a href="#shop" data-nav-filter="men">Men</a>
+          <a href="#shop" data-nav-filter="women">Women</a>
+          <a href="#shop" data-nav-filter="slides">Easy days</a>
+        </div>
+        <div class="footer-col">
+          <h4>Help</h4>
+          <a href="#shop">Delivery</a>
+          <a href="#shop">Returns</a>
+          <a href="#shop">Size guide</a>
+          <a href="#newsletter">Contact</a>
+        </div>
+        <div class="footer-col">
+          <h4>Follow</h4>
+          <a href="#home">Instagram</a>
+          <a href="#home">TikTok</a>
+          <a href="#home">Facebook</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© <span id="year"></span> shues</span>
+        <span>Made with care in Sri Lanka</span>
+      </div>
+    </footer>
+
+    <div class="drawer-backdrop" hidden></div>
+    <aside class="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" aria-hidden="true">
+      <div class="drawer-heading">
+        <div>
+          <p class="eyebrow"><span></span>Your good picks</p>
+          <h2 id="cart-title">Your bag <span class="drawer-count">(0)</span></h2>
+        </div>
+        <button class="close-cart" type="button" aria-label="Close shopping bag">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="cart-items"></div>
+
+      <div class="cart-empty">
+        <span aria-hidden="true">↗</span>
+        <p>Your next favorite pair is out there.</p>
+        <button class="continue-shopping" type="button">Keep looking</button>
+      </div>
+
+      <div class="cart-summary" hidden>
+        <div class="shipping-meter">
+          <div class="shipping-copy">
+            <span>Free delivery</span>
+            <span class="shipping-note">Rs. 10,000 away</span>
+          </div>
+          <div class="shipping-bar"><span></span></div>
+        </div>
+        <div class="subtotal-row"><span>Subtotal</span><strong>Rs. 0</strong></div>
+        <p>Taxes included. Delivery calculated at checkout.</p>
+        <button class="checkout-button" type="button">
+          Continue to checkout <span aria-hidden="true">↗</span>
+        </button>
+        <p class="drawer-reassure">Free 30-day returns · Secure checkout</p>
+      </div>
+    </aside>
+
+    <div class="toast" role="status" aria-live="polite"></div>
+    <script src="script.js"></script>
+  </body>
+</html>
