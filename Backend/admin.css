@@ -67,7 +67,21 @@ h2 { margin: 0; font-size: 21px; }
   color: var(--ink);
   font-size: 14px;
 }
+.stack input[type="file"] { padding: 0.45rem; }
+.stack input[type="file"]::file-selector-button {
+  margin-right: 0.7rem;
+  padding: 0.45rem 0.65rem;
+  border: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.field-help { color: var(--muted); font-size: 11px; font-weight: 400; }
 .stack input:focus, .stack select:focus { outline: 2px solid var(--orange); outline-offset: 1px; }
+.image-preview { display: flex; align-items: center; gap: 0.75rem; color: var(--muted); font-size: 12px; }
+.image-preview[hidden] { display: none; }
+.image-preview img { width: 76px; height: 76px; object-fit: cover; background: var(--paper); }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
 .checkbox-label { display: flex !important; align-items: center; gap: 0.55rem !important; }
 .checkbox-label input { accent-color: var(--orange); }

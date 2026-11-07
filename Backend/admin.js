@@ -7,13 +7,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('login-form');
   const productForm = document.getElementById('product-form');
   const productList = document.getElementById('product-list');
+  const imageFileInput = document.getElementById('image-file');
+  const imagePreview = document.getElementById('image-preview');
+  const imagePreviewImage = document.getElementById('image-preview-img');
+  const imagePreviewLabel = document.getElementById('image-preview-label');
   const statusMessage = document.getElementById('status-message');
   const formTitle = document.getElementById('form-title');
   const saveButton = document.getElementById('save-product');
   const cancelEditButton = document.getElementById('cancel-edit');
   let client;
   let editingId = null;
+  let editingImageUrl = '';
+  let previewObjectUrl = '';
   let statusTimer;
+  const IMAGE_BUCKET = 'product-images';
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+  const IMAGE_EXTENSIONS = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/avif': 'avif',
+  };
 
   function setStatus(message, isError = false) {
     statusMessage.textContent = message;
@@ -179,12 +193,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function startEditing(product) {
     editingId = product.id;
+    editingImageUrl = product.image_url;
     for (const [field, value] of Object.entries(product)) {
       const input = productForm.elements.namedItem(field);
       if (!input) continue;
       if (input.type === 'checkbox') input.checked = Boolean(value);
       else input.value = field === 'image_url' ? normalizeAssetPath(value ?? '') : value ?? '';
     }
+    imageFileInput.required = false;
+    showImagePreview(resolveImageUrl(editingImageUrl), 'Current product image');
     formTitle.textContent = 'Edit product';
     saveButton.textContent = 'Save changes';
     cancelEditButton.hidden = false;
@@ -193,21 +210,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function resetEditor() {
     editingId = null;
+    editingImageUrl = '';
+    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = '';
     productForm.reset();
+    imageFileInput.required = true;
+    imagePreview.hidden = true;
+    imagePreviewImage.removeAttribute('src');
+    imagePreviewLabel.textContent = '';
     productForm.elements.namedItem('display_order').value = '0';
     formTitle.textContent = 'Add a product';
     saveButton.textContent = 'Add product';
     cancelEditButton.hidden = true;
   }
 
-  function validateImageUrl(value) {
-    try {
-      const url = new URL(value, window.location.href);
-      return url.protocol === 'https:' || url.protocol === 'http:';
-    } catch {
-      return false;
-    }
+  function showImagePreview(src, label) {
+    imagePreviewImage.src = src;
+    imagePreviewLabel.textContent = label;
+    imagePreview.hidden = false;
   }
+
+  imageFileInput.addEventListener('change', () => {
+    const file = imageFileInput.files?.[0];
+    if (!file) {
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = '';
+      if (editingImageUrl) showImagePreview(resolveImageUrl(editingImageUrl), 'Current product image');
+      else imagePreview.hidden = true;
+      return;
+    }
+
+    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = URL.createObjectURL(file);
+    showImagePreview(previewObjectUrl, file.name);
+  });
 
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -231,18 +267,26 @@ document.addEventListener('DOMContentLoaded', () => {
   productForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const formData = new FormData(productForm);
-    const imageUrl = String(formData.get('image_url')).trim();
-    if (!validateImageUrl(imageUrl)) {
-      setStatus('Enter a valid http(s) image URL or a relative path such as Backend/assets/shoe.jpg.', true);
+    const imageFile = formData.get('image_file');
+    const hasImageFile = imageFile instanceof File && imageFile.size > 0;
+    if (!hasImageFile && !editingImageUrl) {
+      setStatus('Choose a product image to upload.', true);
+      return;
+    }
+    if (hasImageFile && !IMAGE_EXTENSIONS[imageFile.type]) {
+      setStatus('Choose a JPG, PNG, WebP or AVIF image.', true);
+      return;
+    }
+    if (hasImageFile && imageFile.size > MAX_IMAGE_SIZE) {
+      setStatus('The image must be 5 MB or smaller.', true);
       return;
     }
 
-    const product = {
+    const productFields = {
       name: String(formData.get('name')).trim(),
       description: String(formData.get('description')).trim(),
       category: String(formData.get('category')),
       price: Number(formData.get('price')),
-      image_url: imageUrl,
       image_alt: String(formData.get('image_alt')).trim(),
       badge: String(formData.get('badge')).trim(),
       image_tone: String(formData.get('image_tone')),
@@ -250,21 +294,46 @@ document.addEventListener('DOMContentLoaded', () => {
       display_order: Number(formData.get('display_order')) || 0,
     };
 
+    let uploadedPath = '';
+    saveButton.disabled = true;
     try {
+      let imageUrl = editingImageUrl;
+      if (hasImageFile) {
+        const extension = IMAGE_EXTENSIONS[imageFile.type];
+        uploadedPath = `${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await client.storage
+          .from(IMAGE_BUCKET)
+          .upload(uploadedPath, imageFile, {
+            cacheControl: '3600',
+            contentType: imageFile.type,
+            upsert: false,
+          });
+        if (uploadError) throw new Error(`Image upload failed: ${uploadError.message}`);
+        imageUrl = client.storage.from(IMAGE_BUCKET).getPublicUrl(uploadedPath).data.publicUrl;
+      }
+
+      const product = { ...productFields, image_url: imageUrl };
       const query = editingId
         ? client.from('products').update(product).eq('id', editingId)
         : client.from('products').insert(product);
       const { error } = await query;
-      if (error) {
-        setStatus(`Could not save product: ${error.message}`, true);
-        return;
-      }
+      if (error) throw new Error(`Could not save product: ${error.message}`);
 
       setStatus(editingId ? 'Product updated.' : 'Product added.');
       resetEditor();
       await loadProducts();
     } catch (error) {
+      if (uploadedPath) {
+        try {
+          const { error: cleanupError } = await client.storage.from(IMAGE_BUCKET).remove([uploadedPath]);
+          if (cleanupError) console.error('Could not remove unused uploaded image:', cleanupError.message);
+        } catch (cleanupError) {
+          console.error('Could not remove unused uploaded image:', cleanupError);
+        }
+      }
       setStatus(`Could not save product: ${error.message}`, true);
+    } finally {
+      saveButton.disabled = false;
     }
   });
 
