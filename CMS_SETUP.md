@@ -1,6 +1,6 @@
-# shues product CMS setup
+# VENU Shoues product CMS setup
 
-This product manager uses Supabase's free tier. It stores products in a hosted database, so changes appear in the shop for visitors. Free-tier usage and inactivity limits apply.
+This product manager powers the VENU Shoues storefront and uses Supabase's free tier. It stores products in a hosted database, so changes appear in the shop for visitors. Free-tier usage and inactivity limits apply.
 
 ## 1. Create a Supabase project
 

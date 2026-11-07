@@ -37,6 +37,98 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeFilter = 'all';
   let toastTimer;
 
+  const heroGallery = document.querySelector('.hero-fashion-gallery');
+  const heroSlides = [...document.querySelectorAll('[data-hero-slide]')];
+  const heroCarouselToggle = document.querySelector('.hero-carousel-toggle');
+  const moodTiles = [...document.querySelectorAll('.category-tile')];
+  if (heroGallery && heroSlides.length === moodTiles.length && heroCarouselToggle) {
+    heroSlides.forEach((slide, index) => {
+      const moodImage = moodTiles[index].querySelector('img');
+      const slideImage = slide.querySelector('img');
+      const moodLabel = moodTiles[index].querySelector('span')?.firstChild?.textContent.trim();
+      const caption = slide.querySelector('figcaption');
+
+      if (!moodImage || !slideImage || !caption || !moodLabel) {
+        throw new Error('Hero slides must match the mood cards and include images and captions.');
+      }
+
+      slideImage.src = moodImage.getAttribute('src');
+      slideImage.alt = moodImage.alt;
+      caption.textContent = moodLabel;
+    });
+
+    let activeSlide = heroSlides.findIndex((slide) => slide.classList.contains('is-center'));
+    let carouselTimer;
+    let isPaused = false;
+    let isHovered = false;
+    let isFocused = false;
+    const slidePositions = ['is-center', 'is-right', 'is-back', 'is-left'];
+
+    const renderHeroSlides = () => {
+      heroSlides.forEach((slide, index) => {
+        slidePositions.forEach((position) => slide.classList.remove(position));
+        const position = (index - activeSlide + heroSlides.length) % heroSlides.length;
+        slide.classList.add(slidePositions[position]);
+      });
+    };
+
+    const updateCarouselToggle = () => {
+      heroCarouselToggle.setAttribute('aria-pressed', String(isPaused));
+      heroCarouselToggle.setAttribute(
+        'aria-label',
+        isPaused ? 'Resume featured heels' : 'Pause featured heels'
+      );
+      heroCarouselToggle.textContent = isPaused ? '▶' : 'Ⅱ';
+    };
+
+    const stopCarousel = () => {
+      window.clearInterval(carouselTimer);
+      carouselTimer = undefined;
+    };
+
+    const startCarousel = () => {
+      stopCarousel();
+      if (reduceMotion || isPaused || isHovered || isFocused || document.hidden) return;
+      carouselTimer = window.setInterval(() => {
+        activeSlide = (activeSlide + 1) % heroSlides.length;
+        renderHeroSlides();
+      }, 3600);
+    };
+
+    if (activeSlide < 0) activeSlide = 0;
+    renderHeroSlides();
+
+    if (reduceMotion) {
+      heroCarouselToggle.hidden = true;
+    } else {
+      updateCarouselToggle();
+      heroCarouselToggle.addEventListener('click', () => {
+        isPaused = !isPaused;
+        updateCarouselToggle();
+        startCarousel();
+      });
+      heroGallery.addEventListener('mouseenter', () => {
+        isHovered = true;
+        stopCarousel();
+      });
+      heroGallery.addEventListener('mouseleave', () => {
+        isHovered = false;
+        startCarousel();
+      });
+      heroGallery.addEventListener('focusin', () => {
+        isFocused = true;
+        stopCarousel();
+      });
+      heroGallery.addEventListener('focusout', (event) => {
+        if (heroGallery.contains(event.relatedTarget)) return;
+        isFocused = false;
+        startCarousel();
+      });
+      document.addEventListener('visibilitychange', startCarousel);
+      startCarousel();
+    }
+  }
+
   /* ---------------------------------------------------------
      Small helpers
      --------------------------------------------------------- */
@@ -411,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
       input.reportValidity();
       return;
     }
-    showToast('You are on the list — welcome to shues');
+    showToast('You are on the list — welcome to VENU Shoues');
     newsletterForm.reset();
   });
 
