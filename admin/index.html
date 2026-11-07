@@ -116,64 +116,88 @@
         </div>
 
         <div id="homepage-tab" hidden>
-          <section class="panel content-panel">
-            <div class="section-heading">
-              <h2>Homepage text</h2>
-              <button id="refresh-content" class="text-button" type="button">Refresh</button>
-            </div>
-            <p class="panel-description">Edit the words shown across your homepage, footer and browser tab. Changes appear on the shop after you save.</p>
-            <form id="content-form">
-              <div id="content-fields" class="content-fields"></div>
-              <button id="save-content" class="button button-primary" type="submit">Save homepage text</button>
-            </form>
-          </section>
+          <nav class="cms-subtabs" aria-label="Homepage sections">
+            <button class="cms-subtab is-active" type="button" data-subtab="images" aria-pressed="true">Images</button>
+            <button class="cms-subtab" type="button" data-subtab="cards" aria-pressed="false">Cards</button>
+            <button class="cms-subtab" type="button" data-subtab="text" aria-pressed="false">Text</button>
+          </nav>
 
-          <div class="cms-layout homepage-layout">
-            <section class="panel editor-panel">
+          <div id="images-tab">
+            <section class="panel">
               <div class="section-heading">
-                <h2 id="card-form-title">Add a card</h2>
-                <button id="cancel-card-edit" class="text-button" type="button" hidden>Cancel edit</button>
+                <div>
+                  <h2>Homepage images</h2>
+                  <p class="panel-description">Replace the pictures on your homepage. Choose a new file next to each image, then select <strong>Save images</strong>. Mood card images also appear in the hero carousel.</p>
+                </div>
+                <button id="save-images" class="button button-primary" type="button">Save images</button>
               </div>
-              <form id="card-form" class="stack">
-                <label>Card type
-                  <select name="section" id="card-section" required>
-                    <option value="mood">Mood card (image tile)</option>
-                    <option value="promise">Promise card (numbered)</option>
-                  </select>
-                  <span class="field-help">The first four published mood cards appear in the shop and hero carousel.</span>
-                </label>
-                <label>Title<input name="title" maxlength="100" required /></label>
-                <label data-card-field="promise">Description<textarea name="body" maxlength="300" rows="3"></textarea></label>
-                <label data-card-field="mood">Card image
-                  <input id="card-image-file" name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
-                  <span class="field-help">JPG, PNG, WebP or AVIF · Maximum 5 MB</span>
-                </label>
-                <div id="card-image-preview" class="image-preview" hidden>
-                  <img id="card-image-preview-img" alt="Selected card preview" />
-                  <span id="card-image-preview-label"></span>
-                </div>
-                <label data-card-field="mood">Image description<input name="image_alt" maxlength="180" /></label>
-                <div class="field-row" data-card-field="mood">
-                  <label>Link<input name="link_url" maxlength="200" placeholder="#shop" /></label>
-                  <label>Shop filter
-                    <select name="link_filter">
-                      <option value="">No filter</option>
-                      <option value="heels">Heels</option>
-                      <option value="sandals">Sandals</option>
-                    </select>
-                  </label>
-                </div>
-                <div class="field-row">
-                  <label>Display order<input name="display_order" type="number" step="1" value="0" /></label>
-                  <label class="checkbox-label"><input name="published" type="checkbox" checked /> Show on homepage</label>
-                </div>
-                <button id="save-card" class="button button-primary" type="submit">Add card</button>
-              </form>
+              <div id="image-manager" class="image-manager"></div>
             </section>
+          </div>
 
-            <section class="panel inventory-panel">
-              <div class="section-heading"><h2>Homepage cards</h2><button id="refresh-cards" class="text-button" type="button">Refresh</button></div>
-              <div id="card-list" class="product-list"></div>
+          <div id="cards-tab" hidden>
+            <p class="panel-description">Add or edit mood cards and promise cards. To quickly replace an existing image, use the <strong>Images</strong> tab.</p>
+            <div class="cms-layout homepage-layout">
+              <section class="panel editor-panel">
+                <div class="section-heading">
+                  <h2 id="card-form-title">Add a card</h2>
+                  <button id="cancel-card-edit" class="text-button" type="button" hidden>Cancel edit</button>
+                </div>
+                <form id="card-form" class="stack">
+                  <label>Card type
+                    <select name="section" id="card-section" required>
+                      <option value="mood">Mood card (image tile)</option>
+                      <option value="promise">Promise card (numbered)</option>
+                    </select>
+                    <span class="field-help">The first four published mood cards appear in the shop and hero carousel.</span>
+                  </label>
+                  <label>Title<input name="title" maxlength="100" required /></label>
+                  <label data-card-field="promise">Description<textarea name="body" maxlength="300" rows="3"></textarea></label>
+                  <label data-card-field="mood">Card image
+                    <input id="card-image-file" name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
+                    <span class="field-help">JPG, PNG, WebP or AVIF · Maximum 5 MB</span>
+                  </label>
+                  <div id="card-image-preview" class="image-preview" hidden>
+                    <img id="card-image-preview-img" alt="Selected card preview" />
+                    <span id="card-image-preview-label"></span>
+                  </div>
+                  <label data-card-field="mood">Image description<input name="image_alt" maxlength="180" /></label>
+                  <div class="field-row" data-card-field="mood">
+                    <label>Link<input name="link_url" maxlength="200" placeholder="#shop" /></label>
+                    <label>Shop filter
+                      <select name="link_filter">
+                        <option value="">No filter</option>
+                        <option value="heels">Heels</option>
+                        <option value="sandals">Sandals</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div class="field-row">
+                    <label>Display order<input name="display_order" type="number" step="1" value="0" /></label>
+                    <label class="checkbox-label"><input name="published" type="checkbox" checked /> Show on homepage</label>
+                  </div>
+                  <button id="save-card" class="button button-primary" type="submit">Add card</button>
+                </form>
+              </section>
+
+              <section class="panel inventory-panel">
+                <div class="section-heading"><h2>Homepage cards</h2><button id="refresh-cards" class="text-button" type="button">Refresh</button></div>
+                <div id="card-list" class="product-list"></div>
+              </section>
+            </div>
+          </div>
+
+          <div id="text-tab" hidden>
+            <section class="panel content-panel">
+              <div class="section-heading">
+                <h2>Homepage text</h2>
+                <button id="refresh-content" class="text-button" type="button">Refresh</button>
+              </div>
+              <p class="panel-description">Edit the words shown across your homepage, footer and browser tab. Changes appear on the shop after you save.</p>
+              <form id="content-form">
+                <div id="content-fields" class="content-fields"></div>
+                <button id="save-content" class="button button-primary" type="submit">Save homepage text</button>
+              </form>
             </section>
           </div>
         </div>

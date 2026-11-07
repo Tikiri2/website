@@ -23,6 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabButtons = [...document.querySelectorAll('.cms-tab')];
   const productsTab = document.getElementById('products-tab');
   const homepageTab = document.getElementById('homepage-tab');
+  const subtabButtons = [...document.querySelectorAll('.cms-subtab')];
+  const imagesTab = document.getElementById('images-tab');
+  const cardsTab = document.getElementById('cards-tab');
+  const textTab = document.getElementById('text-tab');
+  const imageManager = document.getElementById('image-manager');
+  const saveImagesButton = document.getElementById('save-images');
   const contentForm = document.getElementById('content-form');
   const contentFields = document.getElementById('content-fields');
   const saveContentButton = document.getElementById('save-content');
@@ -44,9 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
   let cardEditingImageUrl = '';
   let cardPreviewObjectUrl = '';
   let contentValues = new Map();
+  let siteCards = [];
+  let imageObjectUrls = [];
   let productTotal = 0;
   let cardTotal = 0;
   let activeTab = 'products';
+  let activeSubtab = 'images';
   let statusTimer;
   const IMAGE_BUCKET = 'product-images';
   const SITE_IMAGE_BUCKET = 'site-images';
@@ -82,7 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'hero_description', label: 'Description', type: 'textarea' },
         { key: 'hero_cta_label', label: 'Button label', type: 'text' },
         { key: 'hero_cta_url', label: 'Button link', type: 'url' },
-        { key: 'hero_image', label: 'Hero image', type: 'image' },
         { key: 'hero_image_alt', label: 'Hero image description', type: 'text' },
       ],
     },
@@ -111,7 +119,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'story_link_label', label: 'Link label', type: 'text' },
         { key: 'story_link_url', label: 'Link address', type: 'url' },
         { key: 'story_index', label: 'Corner label', type: 'text' },
-        { key: 'story_image', label: 'Story image', type: 'image' },
         { key: 'story_image_alt', label: 'Story image description', type: 'text' },
       ],
     },
@@ -155,9 +162,177 @@ document.addEventListener('DOMContentLoaded', () => {
     panelDescription.textContent =
       tab === 'products'
         ? "Manage your women's heels and sandals. Published products appear in your online shop."
-        : 'Edit the words and cards on your homepage. Published cards appear in the shop.';
+        : 'Change the images, cards and words on your homepage. Start with the Images tab.';
     updatePanelCount();
   }
+
+  function setSubTab(tab) {
+    activeSubtab = tab;
+    subtabButtons.forEach((button) => {
+      const isActive = button.dataset.subtab === tab;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+    imagesTab.hidden = tab !== 'images';
+    cardsTab.hidden = tab !== 'cards';
+    textTab.hidden = tab !== 'text';
+    if (tab === 'images') renderImageManager();
+  }
+
+  function releaseImageObjectUrls() {
+    imageObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+    imageObjectUrls = [];
+  }
+
+  function createImageCard({ badge, title, source, key, imageUrl }) {
+    const label = document.createElement('label');
+    label.className = 'image-card';
+
+    const preview = document.createElement('span');
+    preview.className = 'image-card-preview';
+    const image = document.createElement('img');
+    image.alt = '';
+    if (imageUrl) {
+      image.src = resolveImageUrl(imageUrl);
+    } else {
+      image.hidden = true;
+      const empty = document.createElement('span');
+      empty.className = 'image-card-empty';
+      empty.textContent = 'No image yet';
+      preview.append(empty);
+    }
+    preview.append(image);
+
+    const body = document.createElement('span');
+    body.className = 'image-card-body';
+
+    const badgeElement = document.createElement('span');
+    badgeElement.className = 'image-card-badge';
+    badgeElement.textContent = badge;
+
+    const titleElement = document.createElement('strong');
+    titleElement.textContent = title;
+
+    const help = document.createElement('span');
+    help.className = 'field-help';
+    help.textContent = 'Choose a new image · JPG, PNG, WebP or AVIF · Max 5 MB';
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/webp,image/avif';
+    input.dataset.imageSource = source;
+    input.dataset.imageKey = key;
+
+    body.append(badgeElement, titleElement, help, input);
+    label.append(preview, body);
+    return label;
+  }
+
+  function renderImageManager() {
+    if (!imageManager) return;
+    releaseImageObjectUrls();
+
+    const cards = [
+      createImageCard({
+        badge: 'Hero',
+        title: 'Hero banner image',
+        source: 'content',
+        key: 'hero_image',
+        imageUrl: contentValues.get('hero_image'),
+      }),
+    ];
+
+    siteCards
+      .filter((card) => card.section === 'mood')
+      .forEach((card) => {
+        cards.push(
+          createImageCard({
+            badge: 'Mood card',
+            title: card.title,
+            source: 'card',
+            key: card.id,
+            imageUrl: card.image_url,
+          })
+        );
+      });
+
+    cards.push(
+      createImageCard({
+        badge: 'Story',
+        title: 'Our story image',
+        source: 'content',
+        key: 'story_image',
+        imageUrl: contentValues.get('story_image'),
+      })
+    );
+
+    imageManager.replaceChildren(...cards);
+  }
+
+  imageManager?.addEventListener('change', (event) => {
+    const input = event.target.closest('input[type="file"]');
+    if (!input) return;
+    const image = input.closest('.image-card')?.querySelector('img');
+    if (!image) return;
+
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    imageObjectUrls.push(url);
+    image.hidden = false;
+    image.src = url;
+  });
+
+  saveImagesButton?.addEventListener('click', async () => {
+    const inputs = [...imageManager.querySelectorAll('input[type="file"][data-image-source]')];
+    const selected = inputs.filter((input) => input.files?.[0]);
+    if (!selected.length) {
+      setStatus('Choose at least one new image first.', true);
+      return;
+    }
+
+    saveImagesButton.disabled = true;
+    const uploadedPaths = [];
+    const contentUpdates = new Map();
+    try {
+      for (const input of selected) {
+        const uploaded = await uploadImage(input.files[0], SITE_IMAGE_BUCKET);
+        uploadedPaths.push(uploaded.path);
+
+        if (input.dataset.imageSource === 'content') {
+          contentUpdates.set(input.dataset.imageKey, uploaded.url);
+        } else {
+          const { error } = await client
+            .from('site_cards')
+            .update({ image_url: uploaded.url })
+            .eq('id', input.dataset.imageKey);
+          if (error) throw new Error(error.message);
+        }
+      }
+
+      if (contentUpdates.size) {
+        const rows = [...contentUpdates.entries()].map(([key, value]) => ({ key, value }));
+        const { error } = await client.from('site_content').upsert(rows, { onConflict: 'key' });
+        if (error) throw new Error(error.message);
+        contentUpdates.forEach((value, key) => contentValues.set(key, value));
+      }
+
+      setStatus('Homepage images updated.');
+      await Promise.all([loadContent(), loadCards()]);
+    } catch (error) {
+      for (const path of uploadedPaths) {
+        try {
+          await client.storage.from(SITE_IMAGE_BUCKET).remove([path]);
+        } catch (cleanupError) {
+          console.error('Could not remove unused uploaded image:', cleanupError);
+        }
+      }
+      setStatus(`Could not update homepage images: ${error.message}`, true);
+    } finally {
+      saveImagesButton.disabled = false;
+    }
+  });
 
   function buildContentForm() {
     const groups = CONTENT_SCHEMA.map((group) => {
@@ -249,6 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
       input.value = contentValues.get(input.dataset.contentKey) ?? '';
     });
     setContentImagePreviews();
+    renderImageManager();
   }
 
   async function uploadImage(file, bucket) {
@@ -386,9 +562,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    siteCards = data;
     cardTotal = data.length;
     cardList.replaceChildren(...data.map(createCardRow));
     updatePanelCount();
+    renderImageManager();
   }
 
   function startEditingCard(card) {
@@ -893,6 +1071,9 @@ document.addEventListener('DOMContentLoaded', () => {
   tabButtons.forEach((button) => {
     button.addEventListener('click', () => setTab(button.dataset.tab));
   });
+  subtabButtons.forEach((button) => {
+    button.addEventListener('click', () => setSubTab(button.dataset.subtab));
+  });
   cancelCardEditButton.addEventListener('click', resetCardEditor);
   signOutButton.addEventListener('click', async () => {
     try {
@@ -910,6 +1091,7 @@ document.addEventListener('DOMContentLoaded', () => {
   buildContentForm();
   updateCardFieldVisibility();
   setTab('products');
+  setSubTab('images');
 
   if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
     setupNotice.hidden = false;
