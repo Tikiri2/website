@@ -24,6 +24,8 @@ on conflict do nothing;
 
 Confirm that the query inserted one row. Only users listed in `cms_admins` can change products.
 
+After the CMS user-management migration is applied, you can give another existing Auth user access directly from the signed-in CMS using **Add a CMS user** and their email. They must first be invited or created under **Authentication → Users**. The CMS checks the caller is already an admin; it does not expose a public way to grant access.
+
 ## 4. Connect this website
 
 In **Project Settings → API**, copy the **Project URL** and the **publishable/anon key** into `cms-config.js`:

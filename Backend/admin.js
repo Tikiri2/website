@@ -11,6 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const imagePreview = document.getElementById('image-preview');
   const imagePreviewImage = document.getElementById('image-preview-img');
   const imagePreviewLabel = document.getElementById('image-preview-label');
+  const adminUserForm = document.getElementById('admin-user-form');
+  const addAdminUserButton = document.getElementById('add-admin-user');
   const statusMessage = document.getElementById('status-message');
   const formTitle = document.getElementById('form-title');
   const saveButton = document.getElementById('save-product');
@@ -354,6 +356,28 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   cancelEditButton.addEventListener('click', resetEditor);
+  adminUserForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(adminUserForm);
+    const email = String(formData.get('email')).trim();
+    addAdminUserButton.disabled = true;
+    try {
+      const { error } = await client.rpc('add_cms_admin_by_email', {
+        p_email: email,
+      });
+      if (error) {
+        setStatus(`Could not give CMS access: ${error.message}`, true);
+        return;
+      }
+      adminUserForm.reset();
+      setStatus(`CMS access granted to ${email}. They can now sign in.`);
+    } catch (error) {
+      setStatus(`Could not give CMS access: ${error.message}`, true);
+    } finally {
+      addAdminUserButton.disabled = false;
+    }
+  });
+
   document.getElementById('refresh-products').addEventListener('click', () => {
     loadProducts().catch((error) => setStatus(`Could not load products: ${error.message}`, true));
   });

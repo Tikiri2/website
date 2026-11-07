@@ -98,6 +98,16 @@
             <div class="section-heading"><h2>Inventory</h2><button id="refresh-products" class="text-button" type="button">Refresh</button></div>
             <div id="product-list" class="product-list"></div>
           </section>
+
+          <section class="panel admin-users-panel">
+            <div class="section-heading"><h2>Add a CMS user</h2></div>
+            <p class="panel-description">First invite or create their account in Supabase Authentication → Users. Then enter the same email below to give them CMS access.</p>
+            <form id="admin-user-form" class="user-access-form">
+              <label class="visually-hidden" for="admin-user-email">New CMS user's email</label>
+              <input id="admin-user-email" name="email" type="email" autocomplete="off" placeholder="name@example.com" required />
+              <button id="add-admin-user" class="button button-primary" type="submit">Give CMS access</button>
+            </form>
+          </section>
         </div>
       </section>
       <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
