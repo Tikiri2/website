@@ -51,7 +51,7 @@ For future database/schema changes, add a new, timestamped SQL file under `supab
 
 ## 6. Open the product manager
 
-Run the site through a local web server or deploy it to your hosting provider, then visit `/Backend/admin.html` and sign in with the admin account. You can add, edit, publish/unpublish, and delete products. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
+Run the site through a local web server or deploy it to your hosting provider, then visit `/admin/` and sign in with the admin account. On GitHub Pages, the full URL is `https://your-user.github.io/your-repository/admin/`. You can add, edit, publish/unpublish, and delete products. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
 
 If you already set up Supabase before the images moved, run this once in its SQL Editor to update the existing seed product paths:
 
