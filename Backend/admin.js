@@ -17,12 +17,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const formTitle = document.getElementById('form-title');
   const saveButton = document.getElementById('save-product');
   const cancelEditButton = document.getElementById('cancel-edit');
+  const panelTitle = document.getElementById('panel-title');
+  const panelDescription = document.getElementById('panel-description');
+  const panelCount = document.getElementById('panel-count');
+  const tabButtons = [...document.querySelectorAll('.cms-tab')];
+  const productsTab = document.getElementById('products-tab');
+  const homepageTab = document.getElementById('homepage-tab');
+  const contentForm = document.getElementById('content-form');
+  const contentFields = document.getElementById('content-fields');
+  const saveContentButton = document.getElementById('save-content');
+  const cardForm = document.getElementById('card-form');
+  const cardSection = document.getElementById('card-section');
+  const cardList = document.getElementById('card-list');
+  const cardImageFileInput = document.getElementById('card-image-file');
+  const cardImagePreview = document.getElementById('card-image-preview');
+  const cardImagePreviewImage = document.getElementById('card-image-preview-img');
+  const cardImagePreviewLabel = document.getElementById('card-image-preview-label');
+  const cardFormTitle = document.getElementById('card-form-title');
+  const saveCardButton = document.getElementById('save-card');
+  const cancelCardEditButton = document.getElementById('cancel-card-edit');
   let client;
   let editingId = null;
   let editingImageUrl = '';
   let previewObjectUrl = '';
+  let cardEditingId = null;
+  let cardEditingImageUrl = '';
+  let cardPreviewObjectUrl = '';
+  let contentValues = new Map();
+  let productTotal = 0;
+  let cardTotal = 0;
+  let activeTab = 'products';
   let statusTimer;
   const IMAGE_BUCKET = 'product-images';
+  const SITE_IMAGE_BUCKET = 'site-images';
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
   const IMAGE_EXTENSIONS = {
     'image/jpeg': 'jpg',
@@ -30,6 +57,481 @@ document.addEventListener('DOMContentLoaded', () => {
     'image/webp': 'webp',
     'image/avif': 'avif',
   };
+
+  const CONTENT_SCHEMA = [
+    {
+      group: 'Page title & search description',
+      fields: [
+        { key: 'meta_title', label: 'Browser tab title', type: 'text' },
+        { key: 'meta_description', label: 'Search description', type: 'textarea' },
+      ],
+    },
+    {
+      group: 'Top announcement bar',
+      fields: [
+        { key: 'announcement_items', label: 'Announcement items (one per line)', type: 'textarea' },
+        { key: 'ticker_items', label: 'Scrolling ticker items (one per line)', type: 'textarea' },
+      ],
+    },
+    {
+      group: 'Hero banner',
+      fields: [
+        { key: 'hero_eyebrow', label: 'Small label', type: 'text' },
+        { key: 'hero_title', label: 'Headline (first line)', type: 'text' },
+        { key: 'hero_title_accent', label: 'Headline (italic second line)', type: 'text' },
+        { key: 'hero_description', label: 'Description', type: 'textarea' },
+        { key: 'hero_cta_label', label: 'Button label', type: 'text' },
+        { key: 'hero_cta_url', label: 'Button link', type: 'url' },
+        { key: 'hero_image', label: 'Hero image', type: 'image' },
+        { key: 'hero_image_alt', label: 'Hero image description', type: 'text' },
+      ],
+    },
+    {
+      group: 'Mood cards heading',
+      fields: [
+        { key: 'categories_eyebrow', label: 'Small label', type: 'text' },
+        { key: 'categories_title', label: 'Heading', type: 'text' },
+        { key: 'categories_intro', label: 'Intro text', type: 'textarea' },
+      ],
+    },
+    {
+      group: 'Shop heading',
+      fields: [
+        { key: 'shop_eyebrow', label: 'Small label', type: 'text' },
+        { key: 'shop_title', label: 'Heading', type: 'text' },
+      ],
+    },
+    {
+      group: 'Our story',
+      fields: [
+        { key: 'story_eyebrow', label: 'Small label', type: 'text' },
+        { key: 'story_title', label: 'Heading (first line)', type: 'text' },
+        { key: 'story_title_accent', label: 'Heading (italic second line)', type: 'text' },
+        { key: 'story_body', label: 'Story text', type: 'textarea' },
+        { key: 'story_link_label', label: 'Link label', type: 'text' },
+        { key: 'story_link_url', label: 'Link address', type: 'url' },
+        { key: 'story_index', label: 'Corner label', type: 'text' },
+        { key: 'story_image', label: 'Story image', type: 'image' },
+        { key: 'story_image_alt', label: 'Story image description', type: 'text' },
+      ],
+    },
+    {
+      group: 'Newsletter',
+      fields: [
+        { key: 'newsletter_eyebrow', label: 'Small label', type: 'text' },
+        { key: 'newsletter_title', label: 'Heading (first line)', type: 'text' },
+        { key: 'newsletter_title_accent', label: 'Heading (italic second line)', type: 'text' },
+        { key: 'newsletter_body', label: 'Intro text', type: 'textarea' },
+        { key: 'newsletter_note', label: 'Small note', type: 'text' },
+      ],
+    },
+    {
+      group: 'Footer & WhatsApp',
+      fields: [
+        { key: 'footer_tagline', label: 'Footer tagline', type: 'text' },
+        { key: 'footer_location', label: 'Location', type: 'text' },
+        { key: 'footer_note', label: 'Footer note', type: 'text' },
+        { key: 'whatsapp_url', label: 'WhatsApp link', type: 'url' },
+      ],
+    },
+  ];
+
+  function updatePanelCount() {
+    const count = activeTab === 'products' ? productTotal : cardTotal;
+    const label = activeTab === 'products' ? 'product' : 'card';
+    panelCount.textContent = `${count} ${label}${count === 1 ? '' : 's'}`;
+  }
+
+  function setTab(tab) {
+    activeTab = tab;
+    tabButtons.forEach((button) => {
+      const isActive = button.dataset.tab === tab;
+      button.classList.toggle('is-active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+    productsTab.hidden = tab !== 'products';
+    homepageTab.hidden = tab !== 'homepage';
+    panelTitle.textContent = tab === 'products' ? 'Products' : 'Homepage';
+    panelDescription.textContent =
+      tab === 'products'
+        ? "Manage your women's heels and sandals. Published products appear in your online shop."
+        : 'Edit the words and cards on your homepage. Published cards appear in the shop.';
+    updatePanelCount();
+  }
+
+  function buildContentForm() {
+    const groups = CONTENT_SCHEMA.map((group) => {
+      const fieldset = document.createElement('fieldset');
+      fieldset.className = 'content-group';
+
+      const legend = document.createElement('legend');
+      legend.textContent = group.group;
+
+      const stack = document.createElement('div');
+      stack.className = 'stack';
+
+      group.fields.forEach((field) => {
+        if (field.type === 'image') {
+          const wrapper = document.createElement('label');
+          wrapper.className = 'content-image-field';
+
+          const label = document.createElement('span');
+          label.textContent = field.label;
+
+          const preview = document.createElement('img');
+          preview.alt = '';
+          preview.dataset.contentPreview = field.key;
+          preview.hidden = true;
+
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'image/jpeg,image/png,image/webp,image/avif';
+          input.dataset.contentImage = field.key;
+
+          const help = document.createElement('span');
+          help.className = 'field-help';
+          help.textContent = 'JPG, PNG, WebP or AVIF · Maximum 5 MB';
+
+          wrapper.append(label, preview, input, help);
+          stack.append(wrapper);
+          return;
+        }
+
+        const label = document.createElement('label');
+        label.textContent = field.label;
+
+        const input = document.createElement('input');
+        if (field.type === 'textarea') {
+          const textarea = document.createElement('textarea');
+          textarea.rows = 3;
+          textarea.maxLength = 2000;
+          textarea.dataset.contentKey = field.key;
+          label.append(textarea);
+        } else {
+          input.type = 'text';
+          input.maxLength = 300;
+          input.dataset.contentKey = field.key;
+          label.append(input);
+        }
+
+        stack.append(label);
+      });
+
+      fieldset.append(legend, stack);
+      return fieldset;
+    });
+
+    contentFields.replaceChildren(...groups);
+  }
+
+  function setContentImagePreviews() {
+    contentFields.querySelectorAll('[data-content-preview]').forEach((image) => {
+      const value = contentValues.get(image.dataset.contentPreview);
+      if (value) {
+        image.src = resolveImageUrl(value);
+        image.hidden = false;
+      } else {
+        image.removeAttribute('src');
+        image.hidden = true;
+      }
+    });
+  }
+
+  async function loadContent() {
+    const { data, error } = await client.from('site_content').select('key, value');
+    if (error) {
+      setStatus(`Could not load homepage text: ${error.message}`, true);
+      return;
+    }
+
+    contentValues = new Map((data || []).map((row) => [row.key, row.value]));
+    contentFields.querySelectorAll('[data-content-key]').forEach((input) => {
+      input.value = contentValues.get(input.dataset.contentKey) ?? '';
+    });
+    setContentImagePreviews();
+  }
+
+  async function uploadImage(file, bucket) {
+    if (!IMAGE_EXTENSIONS[file.type]) {
+      throw new Error('Choose a JPG, PNG, WebP or AVIF image.');
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      throw new Error('The image must be 5 MB or smaller.');
+    }
+
+    const path = `${crypto.randomUUID()}.${IMAGE_EXTENSIONS[file.type]}`;
+    const { error } = await client.storage.from(bucket).upload(path, file, {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false,
+    });
+    if (error) throw new Error(`Image upload failed: ${error.message}`);
+
+    return { path, url: client.storage.from(bucket).getPublicUrl(path).data.publicUrl };
+  }
+
+  contentForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const values = new Map(contentValues);
+
+    contentFields.querySelectorAll('[data-content-key]').forEach((input) => {
+      values.set(input.dataset.contentKey, input.value);
+    });
+
+    saveContentButton.disabled = true;
+    const uploadedPaths = [];
+    try {
+      const imageInputs = [...contentFields.querySelectorAll('[data-content-image]')];
+      for (const input of imageInputs) {
+        const file = input.files?.[0];
+        if (!file) continue;
+        const uploaded = await uploadImage(file, SITE_IMAGE_BUCKET);
+        uploadedPaths.push(uploaded.path);
+        values.set(input.dataset.contentImage, uploaded.url);
+        input.value = '';
+      }
+
+      const rows = [...values.entries()].map(([key, value]) => ({
+        key,
+        value: String(value ?? ''),
+      }));
+      const { error } = await client.from('site_content').upsert(rows, { onConflict: 'key' });
+      if (error) throw new Error(error.message);
+
+      contentValues = values;
+      setContentImagePreviews();
+      setStatus('Homepage text saved.');
+    } catch (error) {
+      for (const path of uploadedPaths) {
+        try {
+          await client.storage.from(SITE_IMAGE_BUCKET).remove([path]);
+        } catch (cleanupError) {
+          console.error('Could not remove unused uploaded image:', cleanupError);
+        }
+      }
+      setStatus(`Could not save homepage text: ${error.message}`, true);
+    } finally {
+      saveContentButton.disabled = false;
+    }
+  });
+
+  function updateCardFieldVisibility() {
+    const section = cardSection.value;
+    cardForm.querySelectorAll('[data-card-field]').forEach((field) => {
+      field.hidden = field.dataset.cardField !== section;
+    });
+    cardImageFileInput.required = section === 'mood' && !cardEditingImageUrl;
+  }
+
+  function showCardImagePreview(src, label) {
+    cardImagePreviewImage.src = src;
+    cardImagePreviewLabel.textContent = label;
+    cardImagePreview.hidden = false;
+  }
+
+  function createCardRow(card) {
+    const row = document.createElement('article');
+    row.className = 'card-row';
+
+    if (card.section === 'mood' && card.image_url) {
+      const image = document.createElement('img');
+      image.alt = '';
+      image.loading = 'lazy';
+      image.src = resolveImageUrl(card.image_url);
+      row.append(image);
+    } else {
+      const number = document.createElement('span');
+      number.className = 'card-number';
+      number.textContent = card.section === 'mood'
+        ? 'IMG'
+        : String(card.display_order || 0).padStart(2, '0');
+      row.append(number);
+    }
+
+    const details = document.createElement('div');
+    details.className = 'card-row-details';
+    const title = document.createElement('h3');
+    title.textContent = card.title;
+    const meta = document.createElement('p');
+    const sectionLabel = card.section === 'mood' ? 'Mood card' : 'Promise card';
+    meta.textContent = `${sectionLabel} · ${card.published ? 'Published' : 'Draft'}`;
+    details.append(title, meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    const editButton = document.createElement('button');
+    editButton.className = 'text-button';
+    editButton.type = 'button';
+    editButton.textContent = 'Edit';
+    editButton.addEventListener('click', () => startEditingCard(card));
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'text-button delete-button';
+    deleteButton.type = 'button';
+    deleteButton.textContent = 'Delete';
+    deleteButton.addEventListener('click', () => deleteCard(card));
+    actions.append(editButton, deleteButton);
+
+    row.append(details, actions);
+    return row;
+  }
+
+  async function loadCards() {
+    const { data, error } = await client
+      .from('site_cards')
+      .select('id, section, title, body, image_url, image_alt, link_url, link_filter, published, display_order')
+      .order('section', { ascending: true })
+      .order('display_order', { ascending: true });
+    if (error) {
+      setStatus(`Could not load homepage cards: ${error.message}`, true);
+      return;
+    }
+
+    cardTotal = data.length;
+    cardList.replaceChildren(...data.map(createCardRow));
+    updatePanelCount();
+  }
+
+  function startEditingCard(card) {
+    cardEditingId = card.id;
+    cardEditingImageUrl = card.image_url || '';
+    cardForm.elements.namedItem('section').value = card.section;
+    cardForm.elements.namedItem('title').value = card.title;
+    cardForm.elements.namedItem('body').value = card.body || '';
+    cardForm.elements.namedItem('image_alt').value = card.image_alt || '';
+    cardForm.elements.namedItem('link_url').value = card.link_url || '#shop';
+    cardForm.elements.namedItem('link_filter').value = card.link_filter || '';
+    cardForm.elements.namedItem('display_order').value = card.display_order ?? 0;
+    cardForm.elements.namedItem('published').checked = Boolean(card.published);
+    cardImageFileInput.value = '';
+    if (cardEditingImageUrl) {
+      showCardImagePreview(resolveImageUrl(cardEditingImageUrl), 'Current card image');
+    } else {
+      cardImagePreview.hidden = true;
+    }
+    updateCardFieldVisibility();
+    cardFormTitle.textContent = 'Edit card';
+    saveCardButton.textContent = 'Save changes';
+    cancelCardEditButton.hidden = false;
+    cardForm.elements.namedItem('title').focus();
+  }
+
+  function resetCardEditor() {
+    cardEditingId = null;
+    cardEditingImageUrl = '';
+    if (cardPreviewObjectUrl) URL.revokeObjectURL(cardPreviewObjectUrl);
+    cardPreviewObjectUrl = '';
+    cardForm.reset();
+    cardForm.elements.namedItem('display_order').value = '0';
+    cardImageFileInput.required = false;
+    cardImagePreview.hidden = true;
+    cardImagePreviewImage.removeAttribute('src');
+    cardImagePreviewLabel.textContent = '';
+    cardFormTitle.textContent = 'Add a card';
+    saveCardButton.textContent = 'Add card';
+    cancelCardEditButton.hidden = true;
+    updateCardFieldVisibility();
+  }
+
+  cardSection.addEventListener('change', updateCardFieldVisibility);
+
+  cardImageFileInput.addEventListener('change', () => {
+    const file = cardImageFileInput.files?.[0];
+    if (!file) {
+      if (cardPreviewObjectUrl) URL.revokeObjectURL(cardPreviewObjectUrl);
+      cardPreviewObjectUrl = '';
+      if (cardEditingImageUrl) {
+        showCardImagePreview(resolveImageUrl(cardEditingImageUrl), 'Current card image');
+      } else {
+        cardImagePreview.hidden = true;
+      }
+      return;
+    }
+
+    if (cardPreviewObjectUrl) URL.revokeObjectURL(cardPreviewObjectUrl);
+    cardPreviewObjectUrl = URL.createObjectURL(file);
+    showCardImagePreview(cardPreviewObjectUrl, file.name);
+  });
+
+  cardForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const formData = new FormData(cardForm);
+    const section = String(formData.get('section'));
+    const imageFile = formData.get('image_file');
+    const hasImageFile = imageFile instanceof File && imageFile.size > 0;
+
+    if (section === 'mood' && !hasImageFile && !cardEditingImageUrl) {
+      setStatus('Choose a card image to upload.', true);
+      return;
+    }
+    if (hasImageFile && !IMAGE_EXTENSIONS[imageFile.type]) {
+      setStatus('Choose a JPG, PNG, WebP or AVIF image.', true);
+      return;
+    }
+    if (hasImageFile && imageFile.size > MAX_IMAGE_SIZE) {
+      setStatus('The image must be 5 MB or smaller.', true);
+      return;
+    }
+
+    const cardFields = {
+      section,
+      title: String(formData.get('title')).trim(),
+      body: String(formData.get('body') || '').trim(),
+      image_alt: String(formData.get('image_alt') || '').trim(),
+      link_url: String(formData.get('link_url') || '').trim() || '#shop',
+      link_filter: String(formData.get('link_filter') || ''),
+      display_order: Number(formData.get('display_order')) || 0,
+      published: formData.has('published'),
+    };
+
+    let uploadedPath = '';
+    saveCardButton.disabled = true;
+    try {
+      let imageUrl = section === 'mood' ? cardEditingImageUrl : '';
+      if (hasImageFile) {
+        const uploaded = await uploadImage(imageFile, SITE_IMAGE_BUCKET);
+        uploadedPath = uploaded.path;
+        imageUrl = uploaded.url;
+      }
+
+      const card = { ...cardFields, image_url: imageUrl || '' };
+      const query = cardEditingId
+        ? client.from('site_cards').update(card).eq('id', cardEditingId)
+        : client.from('site_cards').insert(card);
+      const { error } = await query;
+      if (error) throw new Error(error.message);
+
+      setStatus(cardEditingId ? 'Card updated.' : 'Card added.');
+      resetCardEditor();
+      await loadCards();
+    } catch (error) {
+      if (uploadedPath) {
+        try {
+          await client.storage.from(SITE_IMAGE_BUCKET).remove([uploadedPath]);
+        } catch (cleanupError) {
+          console.error('Could not remove unused uploaded image:', cleanupError);
+        }
+      }
+      setStatus(`Could not save card: ${error.message}`, true);
+    } finally {
+      saveCardButton.disabled = false;
+    }
+  });
+
+  async function deleteCard(card) {
+    if (!window.confirm(`Delete the card "${card.title}"? This cannot be undone.`)) return;
+    try {
+      const { error } = await client.from('site_cards').delete().eq('id', card.id);
+      if (error) {
+        setStatus(`Could not delete card: ${error.message}`, true);
+        return;
+      }
+      if (cardEditingId === card.id) resetCardEditor();
+      setStatus('Card deleted.');
+      await loadCards();
+    } catch (error) {
+      setStatus(`Could not delete card: ${error.message}`, true);
+    }
+  }
 
   function setStatus(message, isError = false) {
     statusMessage.textContent = message;
@@ -128,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     showSignedIn();
-    await loadProducts();
+    await Promise.allSettled([loadProducts(), loadContent(), loadCards()]);
   }
 
   function createProductRow(product) {
@@ -189,8 +691,9 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    productTotal = data.length;
     productList.replaceChildren(...data.map(createProductRow));
-    document.getElementById('product-count').textContent = `${data.length} product${data.length === 1 ? '' : 's'}`;
+    updatePanelCount();
   }
 
   function startEditing(product) {
@@ -381,6 +884,16 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('refresh-products').addEventListener('click', () => {
     loadProducts().catch((error) => setStatus(`Could not load products: ${error.message}`, true));
   });
+  document.getElementById('refresh-content').addEventListener('click', () => {
+    loadContent().catch((error) => setStatus(`Could not load homepage text: ${error.message}`, true));
+  });
+  document.getElementById('refresh-cards').addEventListener('click', () => {
+    loadCards().catch((error) => setStatus(`Could not load homepage cards: ${error.message}`, true));
+  });
+  tabButtons.forEach((button) => {
+    button.addEventListener('click', () => setTab(button.dataset.tab));
+  });
+  cancelCardEditButton.addEventListener('click', resetCardEditor);
   signOutButton.addEventListener('click', async () => {
     try {
       const { error } = await client.auth.signOut();
@@ -393,6 +906,10 @@ document.addEventListener('DOMContentLoaded', () => {
       setStatus(`Could not sign out: ${error.message}`, true);
     }
   });
+
+  buildContentForm();
+  updateCardFieldVisibility();
+  setTab('products');
 
   if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
     setupNotice.hidden = false;

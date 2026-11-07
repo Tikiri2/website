@@ -38,36 +38,71 @@ document.addEventListener('DOMContentLoaded', () => {
   let toastTimer;
 
   const heroGallery = document.querySelector('.hero-fashion-gallery');
-  const heroSlides = [...document.querySelectorAll('[data-hero-slide]')];
   const heroCarouselToggle = document.querySelector('.hero-carousel-toggle');
-  const moodTiles = [...document.querySelectorAll('.category-tile')];
-  if (heroGallery && heroSlides.length === moodTiles.length && heroCarouselToggle) {
-    heroSlides.forEach((slide, index) => {
-      const moodImage = moodTiles[index].querySelector('img');
-      const slideImage = slide.querySelector('img');
-      const moodLabel = moodTiles[index].querySelector('span')?.firstChild?.textContent.trim();
-      const caption = slide.querySelector('figcaption');
+  const moodGrid = document.querySelector('[data-cms-cards="mood"]');
+  const promiseGrid = document.querySelector('[data-cms-cards="promise"]');
+  let heroCleanup = null;
 
-      if (!moodImage || !slideImage || !caption || !moodLabel) {
-        throw new Error('Hero slides must match the mood cards and include images and captions.');
-      }
+  function getMoodSlidesFromDom() {
+    return [...document.querySelectorAll('.category-tile')]
+      .map((tile) => {
+        const image = tile.querySelector('img');
+        if (!image) return null;
+        return {
+          image: image.getAttribute('src'),
+          alt: image.alt,
+          label: tile.querySelector('span')?.firstChild?.textContent.trim() || '',
+        };
+      })
+      .filter(Boolean);
+  }
 
-      slideImage.src = moodImage.getAttribute('src');
-      slideImage.alt = moodImage.alt;
-      caption.textContent = moodLabel;
+  function initHeroCarousel(slides) {
+    if (!heroGallery || !heroCarouselToggle || !slides.length) return;
+
+    if (heroCleanup) {
+      heroCleanup();
+      heroCleanup = null;
+    }
+
+    heroGallery.querySelectorAll('[data-hero-slide]').forEach((slide) => slide.remove());
+
+    const visibleSlides = slides.slice(0, 4);
+    const slideElements = visibleSlides.map((slide) => {
+      const figure = document.createElement('figure');
+      figure.className = 'hero-fashion-card';
+      figure.dataset.heroSlide = '';
+
+      const image = document.createElement('img');
+      image.src = slide.image;
+      image.alt = slide.alt || '';
+
+      const caption = document.createElement('figcaption');
+      caption.textContent = slide.label;
+
+      figure.append(image, caption);
+      heroGallery.insertBefore(figure, heroCarouselToggle);
+      return figure;
     });
 
-    let activeSlide = heroSlides.findIndex((slide) => slide.classList.contains('is-center'));
+    const positionsByCount = {
+      1: ['is-center'],
+      2: ['is-center', 'is-right'],
+      3: ['is-center', 'is-right', 'is-left'],
+      4: ['is-center', 'is-right', 'is-back', 'is-left'],
+    };
+    const slidePositions = positionsByCount[slideElements.length] || positionsByCount[4];
+    const allPositions = ['is-center', 'is-right', 'is-back', 'is-left'];
+    let activeSlide = 0;
     let carouselTimer;
     let isPaused = false;
     let isHovered = false;
     let isFocused = false;
-    const slidePositions = ['is-center', 'is-right', 'is-back', 'is-left'];
 
     const renderHeroSlides = () => {
-      heroSlides.forEach((slide, index) => {
-        slidePositions.forEach((position) => slide.classList.remove(position));
-        const position = (index - activeSlide + heroSlides.length) % heroSlides.length;
+      slideElements.forEach((slide, index) => {
+        allPositions.forEach((position) => slide.classList.remove(position));
+        const position = (index - activeSlide + slideElements.length) % slideElements.length;
         slide.classList.add(slidePositions[position]);
       });
     };
@@ -90,43 +125,49 @@ document.addEventListener('DOMContentLoaded', () => {
       stopCarousel();
       if (reduceMotion || isPaused || isHovered || isFocused || document.hidden) return;
       carouselTimer = window.setInterval(() => {
-        activeSlide = (activeSlide + 1) % heroSlides.length;
+        activeSlide = (activeSlide + 1) % slideElements.length;
         renderHeroSlides();
       }, 3600);
     };
 
-    if (activeSlide < 0) activeSlide = 0;
-    renderHeroSlides();
+    const controller = new AbortController();
+    const { signal } = controller;
 
-    if (reduceMotion) {
-      heroCarouselToggle.hidden = true;
-    } else {
-      updateCarouselToggle();
+    renderHeroSlides();
+    heroCarouselToggle.hidden = reduceMotion;
+    updateCarouselToggle();
+
+    if (!reduceMotion) {
       heroCarouselToggle.addEventListener('click', () => {
         isPaused = !isPaused;
         updateCarouselToggle();
         startCarousel();
-      });
+      }, { signal });
       heroGallery.addEventListener('mouseenter', () => {
         isHovered = true;
         stopCarousel();
-      });
+      }, { signal });
       heroGallery.addEventListener('mouseleave', () => {
         isHovered = false;
         startCarousel();
-      });
+      }, { signal });
       heroGallery.addEventListener('focusin', () => {
         isFocused = true;
         stopCarousel();
-      });
+      }, { signal });
       heroGallery.addEventListener('focusout', (event) => {
         if (heroGallery.contains(event.relatedTarget)) return;
         isFocused = false;
         startCarousel();
-      });
-      document.addEventListener('visibilitychange', startCarousel);
+      }, { signal });
+      document.addEventListener('visibilitychange', startCarousel, { signal });
       startCarousel();
     }
+
+    heroCleanup = () => {
+      stopCarousel();
+      controller.abort();
+    };
   }
 
   /* ---------------------------------------------------------
@@ -185,6 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.dataset.category = product.category;
     card.dataset.name = product.name;
     card.dataset.price = product.price;
+    card.dataset.reveal = '';
 
     const imageWrap = document.createElement('div');
     imageWrap.className = `product-image image-${product.image_tone || 'coral'}`;
@@ -240,7 +282,132 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderProducts(products) {
     productGrid.replaceChildren(...products.map(createProductCard));
     cards = [...productGrid.querySelectorAll('.product-card')];
+    registerReveal(cards);
     filterProducts();
+  }
+
+  function renderMoodCards(items) {
+    if (!moodGrid) return;
+    const tiles = items.slice(0, 4).map((item) => {
+      const tile = document.createElement('a');
+      tile.className = 'category-tile';
+      tile.href = item.link_url || '#shop';
+      tile.dataset.reveal = '';
+      if (item.link_filter) tile.dataset.navFilter = item.link_filter;
+
+      const image = document.createElement('img');
+      image.src = normalizeAssetPath(item.image_url);
+      image.alt = item.image_alt || item.title;
+      image.loading = 'lazy';
+
+      const label = document.createElement('span');
+      label.append(document.createTextNode(`${item.title} `));
+      const arrow = document.createElement('b');
+      arrow.setAttribute('aria-hidden', 'true');
+      arrow.textContent = '↗';
+      label.append(arrow);
+
+      tile.append(image, label);
+      return tile;
+    });
+    moodGrid.replaceChildren(...tiles);
+    registerReveal(tiles);
+  }
+
+  function renderPromiseCards(items) {
+    if (!promiseGrid) return;
+    const cards = items.map((item, index) => {
+      const card = document.createElement('div');
+      card.className = 'promise-item';
+      card.dataset.reveal = '';
+
+      const number = document.createElement('span');
+      number.className = 'promise-number';
+      number.textContent = String(index + 1).padStart(2, '0');
+
+      const title = document.createElement('h3');
+      title.textContent = item.title;
+
+      const body = document.createElement('p');
+      body.textContent = item.body || '';
+
+      card.append(number, title, body);
+      return card;
+    });
+    promiseGrid.replaceChildren(...cards);
+    registerReveal(cards);
+  }
+
+  const splitLines = (value) =>
+    typeof value === 'string'
+      ? value.split(/\r?\n/).map((line) => line.trim()).filter(Boolean)
+      : [];
+
+  function renderAnnouncement(items) {
+    const track = document.querySelector('[data-cms-list="announcement"]');
+    if (!track || !items.length) return;
+    const groups = [0, 1].map(() => {
+      const group = document.createElement('div');
+      group.className = 'announcement-group';
+      items.forEach((text) => {
+        const span = document.createElement('span');
+        span.textContent = text;
+        const star = document.createElement('i');
+        star.textContent = '✦';
+        group.append(span, star);
+      });
+      return group;
+    });
+    track.replaceChildren(...groups);
+  }
+
+  function renderTicker(items) {
+    const track = document.querySelector('[data-cms-list="ticker"]');
+    if (!track || !items.length) return;
+    const children = [];
+    [0, 1].forEach(() => {
+      items.forEach((text) => {
+        const span = document.createElement('span');
+        span.textContent = text;
+        const star = document.createElement('i');
+        star.textContent = '✦';
+        children.push(span, star);
+      });
+    });
+    track.replaceChildren(...children);
+  }
+
+  function applySiteContent(rows) {
+    const content = new Map(rows.map((row) => [row.key, row.value]));
+
+    document.querySelectorAll('[data-cms]').forEach((element) => {
+      const value = content.get(element.dataset.cms);
+      if (value !== undefined) element.textContent = value;
+    });
+
+    document.querySelectorAll('[data-cms-image]').forEach((image) => {
+      const value = content.get(image.dataset.cmsImage);
+      if (value) image.src = normalizeAssetPath(value);
+      const altValue = content.get(image.dataset.cmsAlt);
+      if (altValue) image.alt = altValue;
+    });
+
+    document.querySelectorAll('[data-cms-href]').forEach((link) => {
+      const value = content.get(link.dataset.cmsHref);
+      if (value) link.href = value;
+    });
+
+    const title = content.get('meta_title');
+    if (title) document.title = title;
+
+    const description = content.get('meta_description');
+    if (description) {
+      const meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.content = description;
+    }
+
+    renderAnnouncement(splitLines(content.get('announcement_items')));
+    renderTicker(splitLines(content.get('ticker_items')));
   }
 
   /* ---------------------------------------------------------
@@ -280,12 +447,12 @@ document.addEventListener('DOMContentLoaded', () => {
     menuTrigger.setAttribute('aria-expanded', 'false');
   };
 
-  document.querySelectorAll('[data-nav-filter]').forEach((link) => {
-    link.addEventListener('click', () => {
-      const matchingButton = categoryButtons.find((button) => button.dataset.filter === link.dataset.navFilter);
-      matchingButton?.click();
-      closeMenu();
-    });
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('[data-nav-filter]');
+    if (!link) return;
+    const matchingButton = categoryButtons.find((button) => button.dataset.filter === link.dataset.navFilter);
+    matchingButton?.click();
+    closeMenu();
   });
 
   searchInput.addEventListener('input', filterProducts);
@@ -510,41 +677,51 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------------------------
      Scroll reveal
      --------------------------------------------------------- */
-  const revealTargets = [...document.querySelectorAll('[data-reveal]')];
-  document.querySelectorAll('.product-card').forEach((card, index) => {
-    card.style.setProperty('--i', index);
-  });
+  let revealObserver = null;
 
-  if (reduceMotion || !('IntersectionObserver' in window)) {
-    revealTargets.forEach((element) => element.classList.add('is-visible'));
-  } else {
-    const observer = new IntersectionObserver(
+  function registerReveal(elements) {
+    const list = [...elements];
+    list.forEach((element, index) => {
+      if (!element.style.getPropertyValue('--i')) element.style.setProperty('--i', index);
+    });
+    if (reduceMotion || !revealObserver) {
+      list.forEach((element) => element.classList.add('is-visible'));
+      return;
+    }
+    list.forEach((element) => revealObserver.observe(element));
+  }
+
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    revealObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
           entry.target.classList.add('is-visible');
-          observer.unobserve(entry.target);
+          revealObserver.unobserve(entry.target);
         });
       },
       { rootMargin: '0px 0px -40px 0px', threshold: 0.01 }
     );
-    revealTargets.forEach((element) => observer.observe(element));
   }
+
+  registerReveal(document.querySelectorAll('[data-reveal]'));
 
   updateCart();
 
-  async function loadCmsProducts() {
-    if (new URLSearchParams(window.location.search).get('preview') === '1') return;
-
+  /* ---------------------------------------------------------
+     Supabase CMS
+     --------------------------------------------------------- */
+  function getCmsClient() {
     const config = window.SHUES_CMS_CONFIG;
-    if (!config?.supabaseUrl || !config?.supabaseAnonKey) return;
+    if (!config?.supabaseUrl || !config?.supabaseAnonKey) return null;
     if (!window.supabase?.createClient) {
       console.error('Supabase client library did not load.');
-      showToast('Products could not be refreshed. Please reload the page.');
-      return;
+      return null;
     }
+    return window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+  }
 
-    const client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+  async function loadCmsProducts(client) {
     const { data, error } = await client
       .from('products')
       .select('id, name, description, category, price, image_url, image_alt, badge, image_tone')
@@ -553,16 +730,59 @@ document.addEventListener('DOMContentLoaded', () => {
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Could not load products from Supabase:', error.message);
-      showToast('Products could not be refreshed. Please reload the page.');
-      return;
-    }
-    renderProducts(data);
+    if (error) throw new Error(`Products: ${error.message}`);
+    renderProducts(data || []);
   }
 
-  loadCmsProducts().catch((error) => {
-    console.error('Could not load products from Supabase:', error);
-    showToast('Products could not be refreshed. Please reload the page.');
+  async function loadSiteContent(client) {
+    const { data, error } = await client.from('site_content').select('key, value');
+    if (error) throw new Error(`Homepage text: ${error.message}`);
+    applySiteContent(data || []);
+  }
+
+  async function loadSiteCards(client) {
+    const { data, error } = await client
+      .from('site_cards')
+      .select('id, section, title, body, image_url, image_alt, link_url, link_filter, display_order')
+      .eq('published', true)
+      .order('section', { ascending: true })
+      .order('display_order', { ascending: true });
+
+    if (error) throw new Error(`Homepage cards: ${error.message}`);
+
+    const cards = data || [];
+    const moodCards = cards.filter((card) => card.section === 'mood');
+    const promiseCards = cards.filter((card) => card.section === 'promise');
+    if (moodCards.length) renderMoodCards(moodCards);
+    if (promiseCards.length) renderPromiseCards(promiseCards);
+  }
+
+  async function initCms() {
+    try {
+      if (new URLSearchParams(window.location.search).get('preview') === '1') return;
+      const client = getCmsClient();
+      if (!client) return;
+
+      const results = await Promise.allSettled([
+        loadCmsProducts(client),
+        loadSiteContent(client),
+        loadSiteCards(client),
+      ]);
+
+      const failed = results.filter((result) => result.status === 'rejected');
+      failed.forEach((result) => console.error('Could not load CMS data:', result.reason));
+      if (results[0].status === 'rejected') {
+        showToast('Products could not be refreshed. Please reload the page.');
+      }
+    } finally {
+      initHeroCarousel(getMoodSlidesFromDom());
+    }
+  }
+
+  initHeroCarousel(getMoodSlidesFromDom());
+
+  initCms().catch((error) => {
+    console.error('Could not load CMS data:', error);
+    showToast('Some shop content could not be refreshed. Please reload the page.');
   });
 });

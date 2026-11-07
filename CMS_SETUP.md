@@ -1,14 +1,14 @@
-# VENU Shoues product CMS setup
+# VENU Shoues CMS setup
 
-This product manager powers the VENU Shoues storefront and uses Supabase's free tier. It stores products in a hosted database, so changes appear in the shop for visitors. Free-tier usage and inactivity limits apply.
+This CMS powers the VENU Shoues storefront and uses Supabase's free tier. It stores products, homepage text and homepage cards in a hosted database, so changes appear in the shop for visitors. Free-tier usage and inactivity limits apply.
 
 ## 1. Create a Supabase project
 
 Create a project at [supabase.com](https://supabase.com) and wait for its database to finish provisioning.
 
-## 2. Create the products database
+## 2. Create the database
 
-For the first setup, open **SQL Editor**, paste the contents of `cms-setup.sql`, and run it. This creates the products table, the public product-image bucket with admin-only uploads, security policies, and six sample women's heels and sandals. Product names and prices are mock values. Existing products are not duplicated.
+For the first setup, open **SQL Editor**, paste the contents of `cms-setup.sql`, and run it. This creates the products table, the homepage text and card tables, the public image buckets with admin-only uploads, security policies, and sample content (six women's heels and sandals, four mood cards and three promise cards). Product names and prices are mock values. Existing content is not duplicated.
 
 ## 3. Create and allowlist your admin account
 
@@ -22,7 +22,7 @@ select id from auth.users where email = 'you@example.com'
 on conflict do nothing;
 ```
 
-Confirm that the query inserted one row. Only users listed in `cms_admins` can change products.
+Confirm that the query inserted one row. Only users listed in `cms_admins` can change products or homepage content.
 
 After the CMS user-management migration is applied, you can give another existing Auth user access directly from the signed-in CMS using **Add a CMS user** and their email. They must first be invited or created under **Authentication → Users**. The CMS checks the caller is already an admin; it does not expose a public way to grant access.
 
@@ -49,11 +49,20 @@ In the GitHub repository, open **Settings → Secrets and variables → Actions*
 
 After these three secrets are configured, changes committed under `supabase/migrations/` and pushed to `main` are applied to Supabase automatically by GitHub Actions. You can also run the workflow manually from the repository's **Actions** tab. Ordinary product edits in the CMS do not need migrations or SQL.
 
-For future database/schema changes, add a new, timestamped SQL file under `supabase/migrations/`. The women's footwear catalog migration updates the six original sample products and adds heels/sandals categories; only those categories appear in the storefront. Other CMS products are left untouched. Do not edit or rerun old migrations to change an existing production database. Check the workflow run in **Actions** to confirm each migration completed.
+For future database/schema changes, add a new, timestamped SQL file under `supabase/migrations/`. The women's footwear catalog migration updates the six original sample products and adds heels/sandals categories; only those categories appear in the storefront. The homepage CMS migration adds the `site_content` and `site_cards` tables plus the `site-images` bucket. Other CMS products are left untouched. Do not edit or rerun old migrations to change an existing production database. Check the workflow run in **Actions** to confirm each migration completed.
 
-## 6. Open the product manager
+If your shop already existed before the homepage CMS was added, pushing the new migration (or running `supabase/migrations/20261108030000_homepage_cms.sql` in the SQL Editor once) enables the Homepage tab and seeds the current homepage text and cards.
 
-Run the site through a local web server or deploy it to your hosting provider, then visit `/admin/` and sign in with the admin account. On GitHub Pages, the full URL is `https://your-user.github.io/your-repository/admin/`. You can add, edit, publish/unpublish, and delete products. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
+## 6. Open the CMS
+
+Run the site through a local web server or deploy it to your hosting provider, then visit `/admin/` and sign in with the admin account. On GitHub Pages, the full URL is `https://your-user.github.io/your-repository/admin/`.
+
+The CMS has two tabs:
+
+- **Products** — add, edit, publish/unpublish, and delete heels and sandals. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
+- **Homepage** — edit the announcement bar, hero banner, section headings, story, newsletter, footer and WhatsApp link. You can also add, edit, reorder, publish/unpublish, and delete **mood cards** (the four image tiles that also feed the hero carousel) and **promise cards** (the numbered cards near the bottom). Homepage images are uploaded to the Supabase `site-images` bucket.
+
+Homepage text is edited as plain text. For the announcement bar and scrolling ticker, put one item per line. Use the italic line fields for the script-style second line of a heading.
 
 To preview the six local sample heels and sandals without loading live Supabase products, open `index.html?preview=1`. The storefront normally loads only products categorized as **heels** or **sandals**.
 
@@ -65,4 +74,4 @@ set image_url = 'Backend/' || image_url
 where image_url like 'assets/%';
 ```
 
-If you add image files to the website, upload them to your hosting provider too. Changes made to product data are live in Supabase; the website files still need to be deployed when you change code or add local image files.
+If you add image files to the website, upload them to your hosting provider too. Changes made to products and homepage content are live in Supabase; the website files still need to be deployed when you change code or add local image files.

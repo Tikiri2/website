@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#fff8f6" />
-    <title>Women's heels &amp; sandals CMS | VENU Shoues</title>
+    <title>Store CMS | VENU Shoues</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,7 +15,7 @@
   </head>
   <body>
     <header class="admin-header">
-      <a class="brand" href="../index.html">VENU <span>Shoues</span><small>PRODUCT CMS</small></a>
+      <a class="brand" href="../index.html">VENU <span>Shoues</span><small>STORE CMS</small></a>
       <div class="header-actions">
         <a href="../index.html">View shop ↗</a>
         <button id="sign-out" class="button button-outline" type="button" hidden>Sign out</button>
@@ -42,13 +42,18 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow">Your store</p>
-            <h1>Products</h1>
-            <p class="page-description">Manage your women's heels and sandals. Published products appear in your online shop.</p>
+            <h1 id="panel-title">Products</h1>
+            <p class="page-description" id="panel-description">Manage your women's heels and sandals. Published products appear in your online shop.</p>
           </div>
-          <span id="product-count" class="count-pill">0 products</span>
+          <span id="panel-count" class="count-pill">0 products</span>
         </div>
 
-        <div class="cms-layout">
+        <nav class="cms-tabs" aria-label="CMS sections">
+          <button class="cms-tab is-active" type="button" data-tab="products" aria-pressed="true">Products</button>
+          <button class="cms-tab" type="button" data-tab="homepage" aria-pressed="false">Homepage</button>
+        </nav>
+
+        <div id="products-tab" class="cms-layout">
           <section class="panel editor-panel">
             <div class="section-heading">
               <h2 id="form-title">Add a product</h2>
@@ -108,6 +113,69 @@
               <button id="add-admin-user" class="button button-primary" type="submit">Give CMS access</button>
             </form>
           </section>
+        </div>
+
+        <div id="homepage-tab" hidden>
+          <section class="panel content-panel">
+            <div class="section-heading">
+              <h2>Homepage text</h2>
+              <button id="refresh-content" class="text-button" type="button">Refresh</button>
+            </div>
+            <p class="panel-description">Edit the words shown across your homepage, footer and browser tab. Changes appear on the shop after you save.</p>
+            <form id="content-form">
+              <div id="content-fields" class="content-fields"></div>
+              <button id="save-content" class="button button-primary" type="submit">Save homepage text</button>
+            </form>
+          </section>
+
+          <div class="cms-layout homepage-layout">
+            <section class="panel editor-panel">
+              <div class="section-heading">
+                <h2 id="card-form-title">Add a card</h2>
+                <button id="cancel-card-edit" class="text-button" type="button" hidden>Cancel edit</button>
+              </div>
+              <form id="card-form" class="stack">
+                <label>Card type
+                  <select name="section" id="card-section" required>
+                    <option value="mood">Mood card (image tile)</option>
+                    <option value="promise">Promise card (numbered)</option>
+                  </select>
+                  <span class="field-help">The first four published mood cards appear in the shop and hero carousel.</span>
+                </label>
+                <label>Title<input name="title" maxlength="100" required /></label>
+                <label data-card-field="promise">Description<textarea name="body" maxlength="300" rows="3"></textarea></label>
+                <label data-card-field="mood">Card image
+                  <input id="card-image-file" name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
+                  <span class="field-help">JPG, PNG, WebP or AVIF · Maximum 5 MB</span>
+                </label>
+                <div id="card-image-preview" class="image-preview" hidden>
+                  <img id="card-image-preview-img" alt="Selected card preview" />
+                  <span id="card-image-preview-label"></span>
+                </div>
+                <label data-card-field="mood">Image description<input name="image_alt" maxlength="180" /></label>
+                <div class="field-row" data-card-field="mood">
+                  <label>Link<input name="link_url" maxlength="200" placeholder="#shop" /></label>
+                  <label>Shop filter
+                    <select name="link_filter">
+                      <option value="">No filter</option>
+                      <option value="heels">Heels</option>
+                      <option value="sandals">Sandals</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="field-row">
+                  <label>Display order<input name="display_order" type="number" step="1" value="0" /></label>
+                  <label class="checkbox-label"><input name="published" type="checkbox" checked /> Show on homepage</label>
+                </div>
+                <button id="save-card" class="button button-primary" type="submit">Add card</button>
+              </form>
+            </section>
+
+            <section class="panel inventory-panel">
+              <div class="section-heading"><h2>Homepage cards</h2><button id="refresh-cards" class="text-button" type="button">Refresh</button></div>
+              <div id="card-list" class="product-list"></div>
+            </section>
+          </div>
         </div>
       </section>
       <p id="status-message" class="status-message" role="status" aria-live="polite"></p>

@@ -574,7 +574,8 @@ p {
   text-transform: uppercase;
 }
 
-.eyebrow > span {
+.eyebrow > span:first-child {
+  flex: none;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -588,7 +589,7 @@ p {
   letter-spacing: 0.16em;
 }
 
-.hero-copy .eyebrow > span {
+.hero-copy .eyebrow > span:first-child {
   background: var(--lime);
 }
 
@@ -638,7 +639,7 @@ p {
   transition: background 0.25s ease, color 0.25s ease, transform 0.25s var(--ease);
 }
 
-.button span {
+.button > span[aria-hidden="true"] {
   font-size: 15px;
   line-height: 1;
 }
@@ -667,12 +668,12 @@ p {
   transition: color 0.2s ease;
 }
 
-.text-link span {
+.text-link > span[aria-hidden="true"] {
   font-size: 14px;
   transition: transform 0.25s var(--ease);
 }
 
-.text-link:hover span {
+.text-link:hover > span[aria-hidden="true"] {
   transform: translate(3px, -3px);
 }
 
@@ -1288,7 +1289,7 @@ p {
   color: #775767;
 }
 
-.story-copy .eyebrow > span {
+.story-copy .eyebrow > span:first-child {
   background: var(--orange);
 }
 
@@ -1388,7 +1389,7 @@ p {
   color: rgba(245, 242, 234, 0.55);
 }
 
-.eyebrow-light > span {
+.eyebrow-light > span:first-child {
   background: var(--lime);
 }
 
