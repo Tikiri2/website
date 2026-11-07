@@ -6,7 +6,7 @@ create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
   description text not null default '',
-  category text not null check (category in ('men', 'women', 'slides')),
+  category text not null check (category in ('heels', 'sandals')),
   price integer not null check (price > 0),
   image_url text not null,
   image_alt text not null default '',
@@ -89,10 +89,10 @@ create policy "Allowlisted admins can upload product images"
 insert into public.products
   (name, description, category, price, image_url, image_alt, badge, image_tone, display_order)
 values
-  ('Pace Runner', 'Made for the long way home', 'men', 9500, 'Backend/assets/pace-runner.jpg', 'Red Pace Runner sneaker', 'BESTSELLER', 'coral', 1),
-  ('Studio Low', 'Your every-single-day pair', 'women', 10500, 'Backend/assets/studio-low.jpg', 'White Studio Low everyday sneaker', 'JUST LANDED', 'blue', 2),
-  ('Court Classic', 'A little old school, all yours', 'men', 11000, 'Backend/assets/court-classic.jpg', 'Court Classic low-top sneaker', '', 'lime', 3),
-  ('Cloudform Knit', 'Soft landings, all day long', 'women', 12500, 'Backend/assets/cloudform-knit.jpg', 'Cloudform Knit pastel cushioned sneaker', 'CLOUD-LIGHT', 'lilac', 4),
-  ('Sunday Slip-On', 'Out the door in no time', 'slides', 4500, 'Backend/assets/sunday-slip-on.jpg', 'Sunday Slip-On casual shoe', 'EASY DOES IT', 'yellow', 5),
-  ('Field Day High', 'A classic with room to roam', 'men', 12400, 'Backend/assets/field-day-high.jpg', 'Field Day chunky everyday sneaker', '', 'green', 6)
+  ('Golden Hour Heel', 'A touch of gold for your evening plans', 'heels', 12900, 'Backend/assets/heel-golden-hour.jpg', 'Gold strappy women''s heel sandal', 'BESTSELLER', 'coral', 1),
+  ('Ruby Ribbon Heel', 'A playful pop of red for going out', 'heels', 10900, 'Backend/assets/heel-red-ribbon.jpg', 'Red women''s heels with ribbon-style straps', 'JUST LANDED', 'blue', 2),
+  ('Golden Arch Heel', 'A little shimmer, made for celebrations', 'heels', 11900, 'Backend/assets/heel-gold-arch.jpg', 'Gold open-toe women''s occasion heels', '', 'lime', 3),
+  ('Floral Footbed Sandal', 'Easy, pretty and ready for everyday', 'sandals', 5900, 'Backend/assets/sandal-black-flower.jpg', 'Printed women''s flat sandals with flower detail', 'COMFY CUTE', 'lilac', 4),
+  ('Sunset Strap Sandal', 'Your comfy favourite for sunny days', 'sandals', 6900, 'Backend/assets/sandal-orange-strap.jpg', 'Orange and cream women''s strap sandals', 'EVERYDAY FAVOURITE', 'yellow', 5),
+  ('Blush Charm Sandal', 'Pretty little details for everyday wear', 'sandals', 7900, 'Backend/assets/sandal-brown-charm.jpg', 'Women''s sandals with decorative charm straps', '', 'green', 6)
 on conflict (name) do nothing;

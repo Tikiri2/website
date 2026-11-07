@@ -442,6 +442,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCart();
 
   async function loadCmsProducts() {
+    if (new URLSearchParams(window.location.search).get('preview') === '1') return;
+
     const config = window.SHUES_CMS_CONFIG;
     if (!config?.supabaseUrl || !config?.supabaseAnonKey) return;
     if (!window.supabase?.createClient) {
@@ -455,6 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .from('products')
       .select('id, name, description, category, price, image_url, image_alt, badge, image_tone')
       .eq('published', true)
+      .in('category', ['heels', 'sandals'])
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
 

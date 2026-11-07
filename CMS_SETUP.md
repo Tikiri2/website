@@ -8,7 +8,7 @@ Create a project at [supabase.com](https://supabase.com) and wait for its databa
 
 ## 2. Create the products database
 
-For the first setup, open **SQL Editor**, paste the contents of `cms-setup.sql`, and run it. This creates the products table, the public product-image bucket with admin-only uploads, security policies, and the six current shop products. Existing products are not duplicated.
+For the first setup, open **SQL Editor**, paste the contents of `cms-setup.sql`, and run it. This creates the products table, the public product-image bucket with admin-only uploads, security policies, and six sample women's heels and sandals. Product names and prices are mock values. Existing products are not duplicated.
 
 ## 3. Create and allowlist your admin account
 
@@ -49,11 +49,13 @@ In the GitHub repository, open **Settings → Secrets and variables → Actions*
 
 After these three secrets are configured, changes committed under `supabase/migrations/` and pushed to `main` are applied to Supabase automatically by GitHub Actions. You can also run the workflow manually from the repository's **Actions** tab. Ordinary product edits in the CMS do not need migrations or SQL.
 
-For future database/schema changes, add a new, timestamped SQL file under `supabase/migrations/`. Do not edit or rerun old migrations to change an existing production database. Check the workflow run in **Actions** to confirm each migration completed.
+For future database/schema changes, add a new, timestamped SQL file under `supabase/migrations/`. The women's footwear catalog migration updates the six original sample products and adds heels/sandals categories; only those categories appear in the storefront. Other CMS products are left untouched. Do not edit or rerun old migrations to change an existing production database. Check the workflow run in **Actions** to confirm each migration completed.
 
 ## 6. Open the product manager
 
 Run the site through a local web server or deploy it to your hosting provider, then visit `/admin/` and sign in with the admin account. On GitHub Pages, the full URL is `https://your-user.github.io/your-repository/admin/`. You can add, edit, publish/unpublish, and delete products. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
+
+To preview the six local sample heels and sandals without loading live Supabase products, open `index.html?preview=1`. The storefront normally loads only products categorized as **heels** or **sandals**.
 
 If you already set up Supabase before the images moved, run this once in its SQL Editor to update the existing seed product paths:
 
