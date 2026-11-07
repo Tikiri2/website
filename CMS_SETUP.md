@@ -8,7 +8,7 @@ Create a project at [supabase.com](https://supabase.com) and wait for its databa
 
 ## 2. Create the products database
 
-In the Supabase dashboard, open **SQL Editor**, paste the contents of `cms-setup.sql`, and run it. The SQL creates the products table, the public product-image bucket with admin-only uploads, security policies, and the six current shop products. If you already set up the CMS, run this SQL again to add the image bucket and its policies.
+For the first setup, open **SQL Editor**, paste the contents of `cms-setup.sql`, and run it. This creates the products table, the public product-image bucket with admin-only uploads, security policies, and the six current shop products. Existing products are not duplicated.
 
 ## 3. Create and allowlist your admin account
 
@@ -37,7 +37,19 @@ window.SHUES_CMS_CONFIG = {
 
 The publishable/anon key is intended for browser use. **Never put a `service_role` or secret key in this website.**
 
-## 5. Open the product manager
+## 5. Enable automatic database migrations
+
+In the GitHub repository, open **Settings → Secrets and variables → Actions** and add these repository secrets:
+
+- `SUPABASE_ACCESS_TOKEN`: create a personal access token in your Supabase account settings.
+- `SUPABASE_DB_PASSWORD`: the database password chosen when creating the Supabase project.
+- `SUPABASE_PROJECT_ID`: the project reference shown in the Supabase project URL/dashboard.
+
+After these three secrets are configured, changes committed under `supabase/migrations/` and pushed to `main` are applied to Supabase automatically by GitHub Actions. You can also run the workflow manually from the repository's **Actions** tab. Ordinary product edits in the CMS do not need migrations or SQL.
+
+For future database/schema changes, add a new, timestamped SQL file under `supabase/migrations/`. Do not edit or rerun old migrations to change an existing production database. Check the workflow run in **Actions** to confirm each migration completed.
+
+## 6. Open the product manager
 
 Run the site through a local web server or deploy it to your hosting provider, then visit `/Backend/admin.html` and sign in with the admin account. You can add, edit, publish/unpublish, and delete products. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
 
