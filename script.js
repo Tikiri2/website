@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------------------------
      Elements
      --------------------------------------------------------- */
-  const cards = [...document.querySelectorAll('.product-card')];
+  let cards = [...document.querySelectorAll('.product-card')];
   const categoryButtons = [...document.querySelectorAll('.category-button')];
   const searchInput = document.getElementById('product-search');
   const sortSelect = document.getElementById('product-sort');
@@ -84,6 +84,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('year').textContent = new Date().getFullYear();
 
+  function createProductCard(product) {
+    const card = document.createElement('article');
+    card.className = 'product-card';
+    card.dataset.id = product.id;
+    card.dataset.category = product.category;
+    card.dataset.name = product.name;
+    card.dataset.price = product.price;
+
+    const imageWrap = document.createElement('div');
+    imageWrap.className = `product-image image-${product.image_tone || 'coral'}`;
+
+    if (product.badge) {
+      const badge = document.createElement('span');
+      badge.className = 'product-tag';
+      badge.textContent = product.badge;
+      imageWrap.append(badge);
+    }
+
+    const favorite = document.createElement('button');
+    favorite.className = 'favorite-button';
+    favorite.type = 'button';
+    favorite.setAttribute('aria-label', `Save ${product.name}`);
+    favorite.setAttribute('aria-pressed', String(favorites.has(product.name)));
+    favorite.textContent = favorites.has(product.name) ? '♥' : '♡';
+    imageWrap.append(favorite);
+
+    const image = document.createElement('img');
+    image.src = product.image_url;
+    image.alt = product.image_alt || product.name;
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    imageWrap.append(image);
+
+    const addButton = document.createElement('button');
+    addButton.className = 'quick-add';
+    addButton.type = 'button';
+    addButton.append(document.createTextNode('Add to bag '));
+    const plus = document.createElement('span');
+    plus.setAttribute('aria-hidden', 'true');
+    plus.textContent = '+';
+    addButton.append(plus);
+    imageWrap.append(addButton);
+    card.append(imageWrap);
+
+    const info = document.createElement('div');
+    info.className = 'product-info';
+    const details = document.createElement('div');
+    const name = document.createElement('h3');
+    name.textContent = product.name;
+    const description = document.createElement('p');
+    description.textContent = product.description || '';
+    details.append(name, description);
+    const price = document.createElement('strong');
+    price.textContent = formatPrice(product.price);
+    info.append(details, price);
+    card.append(info);
+    return card;
+  }
+
+  function renderProducts(products) {
+    productGrid.replaceChildren(...products.map(createProductCard));
+    cards = [...productGrid.querySelectorAll('.product-card')];
+    filterProducts();
+  }
+
   /* ---------------------------------------------------------
      Shop: filter + search + sort
      --------------------------------------------------------- */
@@ -152,6 +217,41 @@ document.addEventListener('DOMContentLoaded', () => {
     sortedCards.forEach((card) => productGrid.append(card));
   });
 
+  productGrid.addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+    const card = button.closest('.product-card');
+    if (!card) return;
+
+    if (button.classList.contains('quick-add')) {
+      const id = card.dataset.id || card.dataset.name;
+      const item = cart.get(id) || {
+        id,
+        name: card.dataset.name,
+        price: Number(card.dataset.price),
+        image: card.querySelector('img').src,
+        quantity: 0,
+      };
+      item.quantity += 1;
+      cart.set(id, item);
+      updateCart();
+      bumpCart();
+      showToast(`${item.name} added to your bag`);
+      return;
+    }
+
+    if (button.classList.contains('favorite-button')) {
+      const name = card.dataset.name;
+      const isFavorite = button.getAttribute('aria-pressed') === 'true';
+      button.setAttribute('aria-pressed', String(!isFavorite));
+      button.textContent = isFavorite ? '♡' : '♥';
+      if (isFavorite) favorites.delete(name);
+      else favorites.add(name);
+      writeJSON(STORAGE.favorites, [...favorites]);
+      showToast(isFavorite ? 'Removed from saved pairs' : 'Pair saved for later');
+    }
+  });
+
   /* ---------------------------------------------------------
      Toast
      --------------------------------------------------------- */
@@ -177,18 +277,43 @@ document.addEventListener('DOMContentLoaded', () => {
     entries.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'cart-line';
-      row.innerHTML = `
-        <img class="cart-line-image" src="${item.image}" alt="" />
-        <div>
-          <h3 class="cart-line-title">${item.name}</h3>
-          <p class="cart-line-price">${formatPrice(item.price)}</p>
-          <div class="quantity-control" aria-label="Quantity for ${item.name}">
-            <button type="button" data-cart-action="decrease" data-product-id="${item.id}" aria-label="Remove one ${item.name}">−</button>
-            <span>${item.quantity}</span>
-            <button type="button" data-cart-action="increase" data-product-id="${item.id}" aria-label="Add one ${item.name}">+</button>
-          </div>
-        </div>
-        <strong class="cart-line-total">${formatPrice(item.price * item.quantity)}</strong>`;
+      const image = document.createElement('img');
+      image.className = 'cart-line-image';
+      image.src = item.image;
+      image.alt = '';
+
+      const details = document.createElement('div');
+      const name = document.createElement('h3');
+      name.className = 'cart-line-title';
+      name.textContent = item.name;
+      const price = document.createElement('p');
+      price.className = 'cart-line-price';
+      price.textContent = formatPrice(item.price);
+      const quantity = document.createElement('div');
+      quantity.className = 'quantity-control';
+      quantity.setAttribute('aria-label', `Quantity for ${item.name}`);
+
+      const decrease = document.createElement('button');
+      decrease.type = 'button';
+      decrease.dataset.cartAction = 'decrease';
+      decrease.dataset.productId = item.id;
+      decrease.setAttribute('aria-label', `Remove one ${item.name}`);
+      decrease.textContent = '−';
+      const quantityValue = document.createElement('span');
+      quantityValue.textContent = item.quantity;
+      const increase = document.createElement('button');
+      increase.type = 'button';
+      increase.dataset.cartAction = 'increase';
+      increase.dataset.productId = item.id;
+      increase.setAttribute('aria-label', `Add one ${item.name}`);
+      increase.textContent = '+';
+      quantity.append(decrease, quantityValue, increase);
+      details.append(name, price, quantity);
+
+      const total = document.createElement('strong');
+      total.className = 'cart-line-total';
+      total.textContent = formatPrice(item.price * item.quantity);
+      row.append(image, details, total);
       cartItems.append(row);
     });
 
@@ -230,25 +355,6 @@ document.addEventListener('DOMContentLoaded', () => {
     cartTrigger.focus();
   }
 
-  document.querySelectorAll('.quick-add').forEach((button) => {
-    button.addEventListener('click', () => {
-      const card = button.closest('.product-card');
-      const id = card.dataset.name;
-      const item = cart.get(id) || {
-        id,
-        name: card.dataset.name,
-        price: Number(card.dataset.price),
-        image: card.querySelector('img').src,
-        quantity: 0,
-      };
-      item.quantity += 1;
-      cart.set(id, item);
-      updateCart();
-      bumpCart();
-      showToast(`${item.name} added to your bag`);
-    });
-  });
-
   cartItems.addEventListener('click', (event) => {
     const button = event.target.closest('[data-cart-action]');
     if (!button) return;
@@ -271,25 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ---------------------------------------------------------
      Favourites (persisted)
      --------------------------------------------------------- */
-  document.querySelectorAll('.favorite-button').forEach((button) => {
-    const name = button.closest('.product-card').dataset.name;
-
-    if (favorites.has(name)) {
-      button.setAttribute('aria-pressed', 'true');
-      button.textContent = '♥';
-    }
-
-    button.addEventListener('click', () => {
-      const isFavorite = button.getAttribute('aria-pressed') === 'true';
-      button.setAttribute('aria-pressed', String(!isFavorite));
-      button.textContent = isFavorite ? '♡' : '♥';
-      if (isFavorite) favorites.delete(name);
-      else favorites.add(name);
-      writeJSON(STORAGE.favorites, [...favorites]);
-      showToast(isFavorite ? 'Removed from saved pairs' : 'Pair saved for later');
-    });
-  });
-
   /* ---------------------------------------------------------
      Keyboard + header
      --------------------------------------------------------- */
@@ -351,4 +438,34 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   updateCart();
+
+  async function loadCmsProducts() {
+    const config = window.SHUES_CMS_CONFIG;
+    if (!config?.supabaseUrl || !config?.supabaseAnonKey) return;
+    if (!window.supabase?.createClient) {
+      console.error('Supabase client library did not load.');
+      showToast('Products could not be refreshed. Please reload the page.');
+      return;
+    }
+
+    const client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    const { data, error } = await client
+      .from('products')
+      .select('id, name, description, category, price, image_url, image_alt, badge, image_tone')
+      .eq('published', true)
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Could not load products from Supabase:', error.message);
+      showToast('Products could not be refreshed. Please reload the page.');
+      return;
+    }
+    renderProducts(data);
+  }
+
+  loadCmsProducts().catch((error) => {
+    console.error('Could not load products from Supabase:', error);
+    showToast('Products could not be refreshed. Please reload the page.');
+  });
 });

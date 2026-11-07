@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f2ea" />
+    <title>Product manager | shues</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <header class="admin-header">
+      <a class="brand" href="index.html">shues<span>.</span><small>PRODUCT CMS</small></a>
+      <div class="header-actions">
+        <a href="index.html">View shop ↗</a>
+        <button id="sign-out" class="button button-outline" type="button" hidden>Sign out</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <section id="setup-notice" class="notice" hidden>
+        <h1>Connect your free Supabase project</h1>
+        <p>Follow <a href="CMS_SETUP.md">CMS_SETUP.md</a> to set up the database, create your admin account, and add your project keys to <code>cms-config.js</code>.</p>
+      </section>
+
+      <section id="login-panel" class="panel login-panel" hidden>
+        <p class="eyebrow">Admin access</p>
+        <h1>Sign in to your shop</h1>
+        <form id="login-form" class="stack">
+          <label>Email<input name="email" type="email" autocomplete="username" required /></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+          <button class="button button-primary" type="submit">Sign in</button>
+        </form>
+      </section>
+
+      <section id="cms-panel" hidden>
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Your store</p>
+            <h1>Products</h1>
+          </div>
+          <span id="product-count" class="count-pill">0 products</span>
+        </div>
+
+        <div class="cms-layout">
+          <section class="panel editor-panel">
+            <div class="section-heading">
+              <h2 id="form-title">Add a product</h2>
+              <button id="cancel-edit" class="text-button" type="button" hidden>Cancel edit</button>
+            </div>
+            <form id="product-form" class="stack">
+              <label>Product name<input name="name" maxlength="100" required /></label>
+              <label>Short description<input name="description" maxlength="180" required /></label>
+              <div class="field-row">
+                <label>Category
+                  <select name="category" required>
+                    <option value="men">Men</option>
+                    <option value="women">Women</option>
+                    <option value="slides">Slides</option>
+                  </select>
+                </label>
+                <label>Price (Rs.)<input name="price" type="number" min="1" step="1" required /></label>
+              </div>
+              <label>Image URL or path<input name="image_url" type="text" placeholder="assets/my-shoe.jpg or https://..." required /></label>
+              <label>Image description<input name="image_alt" maxlength="180" required /></label>
+              <label>Badge <span class="optional">(optional)</span><input name="badge" maxlength="30" placeholder="JUST LANDED" /></label>
+              <div class="field-row">
+                <label>Image background
+                  <select name="image_tone">
+                    <option value="coral">Coral</option>
+                    <option value="blue">Blue</option>
+                    <option value="lime">Lime</option>
+                    <option value="lilac">Lilac</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="green">Green</option>
+                  </select>
+                </label>
+                <label>Display order<input name="display_order" type="number" step="1" value="0" /></label>
+              </div>
+              <label class="checkbox-label"><input name="published" type="checkbox" checked /> Show this product in the shop</label>
+              <button id="save-product" class="button button-primary" type="submit">Add product</button>
+            </form>
+          </section>
+
+          <section class="panel inventory-panel">
+            <div class="section-heading"><h2>Inventory</h2><button id="refresh-products" class="text-button" type="button">Refresh</button></div>
+            <div id="product-list" class="product-list"></div>
+          </section>
+        </div>
+      </section>
+      <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="cms-config.js"></script>
+    <script src="admin.js"></script>
+  </body>
+</html>
