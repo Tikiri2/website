@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
     signOutButton.hidden = false;
   }
 
+  function normalizeAssetPath(path) {
+    return typeof path === 'string' && path.startsWith('assets/') ? `Backend/${path}` : path;
+  }
+
   async function verifyAdmin() {
     const { data: { session }, error } = await client.auth.getSession();
     if (error) throw error;
@@ -70,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     row.className = 'product-row';
 
     const image = document.createElement('img');
-    image.src = product.image_url;
+    image.src = normalizeAssetPath(product.image_url);
     image.alt = '';
     image.loading = 'lazy';
     row.append(image);
@@ -122,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const input = productForm.elements.namedItem(field);
       if (!input) continue;
       if (input.type === 'checkbox') input.checked = Boolean(value);
-      else input.value = value ?? '';
+      else input.value = field === 'image_url' ? normalizeAssetPath(value ?? '') : value ?? '';
     }
     formTitle.textContent = 'Edit product';
     saveButton.textContent = 'Save changes';
@@ -172,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData(productForm);
     const imageUrl = String(formData.get('image_url')).trim();
     if (!validateImageUrl(imageUrl)) {
-      setStatus('Enter a valid http(s) image URL or a relative path such as assets/shoe.jpg.', true);
+      setStatus('Enter a valid http(s) image URL or a relative path such as Backend/assets/shoe.jpg.', true);
       return;
     }
 

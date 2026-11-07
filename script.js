@@ -58,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const formatPrice = (amount) => `Rs. ${Math.round(amount).toLocaleString('en-LK')}`;
+  const normalizeAssetPath = (path) =>
+    typeof path === 'string' && path.startsWith('assets/') ? `Backend/${path}` : path;
 
   /* ---------------------------------------------------------
      State
@@ -71,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
           id: item.id,
           name: String(item.name),
           price: Number(item.price) || 0,
-          image: String(item.image || ''),
+          image: normalizeAssetPath(String(item.image || '')),
           quantity: Number(item.quantity),
         });
       }
@@ -111,7 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     imageWrap.append(favorite);
 
     const image = document.createElement('img');
-    image.src = product.image_url;
+    image.src = normalizeAssetPath(product.image_url);
     image.alt = product.image_alt || product.name;
     image.loading = 'lazy';
     image.decoding = 'async';

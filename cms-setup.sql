@@ -60,10 +60,10 @@ create policy "Allowlisted admins can manage products"
 insert into public.products
   (name, description, category, price, image_url, image_alt, badge, image_tone, display_order)
 values
-  ('Pace Runner', 'Made for the long way home', 'men', 9500, 'assets/pace-runner.jpg', 'Red Pace Runner sneaker', 'BESTSELLER', 'coral', 1),
-  ('Studio Low', 'Your every-single-day pair', 'women', 10500, 'assets/studio-low.jpg', 'White Studio Low everyday sneaker', 'JUST LANDED', 'blue', 2),
-  ('Court Classic', 'A little old school, all yours', 'men', 11000, 'assets/court-classic.jpg', 'Court Classic low-top sneaker', '', 'lime', 3),
-  ('Cloudform Knit', 'Soft landings, all day long', 'women', 12500, 'assets/cloudform-knit.jpg', 'Cloudform Knit pastel cushioned sneaker', 'CLOUD-LIGHT', 'lilac', 4),
-  ('Sunday Slip-On', 'Out the door in no time', 'slides', 4500, 'assets/sunday-slip-on.jpg', 'Sunday Slip-On casual shoe', 'EASY DOES IT', 'yellow', 5),
-  ('Field Day High', 'A classic with room to roam', 'men', 12400, 'assets/field-day-high.jpg', 'Field Day chunky everyday sneaker', '', 'green', 6)
+  ('Pace Runner', 'Made for the long way home', 'men', 9500, 'Backend/assets/pace-runner.jpg', 'Red Pace Runner sneaker', 'BESTSELLER', 'coral', 1),
+  ('Studio Low', 'Your every-single-day pair', 'women', 10500, 'Backend/assets/studio-low.jpg', 'White Studio Low everyday sneaker', 'JUST LANDED', 'blue', 2),
+  ('Court Classic', 'A little old school, all yours', 'men', 11000, 'Backend/assets/court-classic.jpg', 'Court Classic low-top sneaker', '', 'lime', 3),
+  ('Cloudform Knit', 'Soft landings, all day long', 'women', 12500, 'Backend/assets/cloudform-knit.jpg', 'Cloudform Knit pastel cushioned sneaker', 'CLOUD-LIGHT', 'lilac', 4),
+  ('Sunday Slip-On', 'Out the door in no time', 'slides', 4500, 'Backend/assets/sunday-slip-on.jpg', 'Sunday Slip-On casual shoe', 'EASY DOES IT', 'yellow', 5),
+  ('Field Day High', 'A classic with room to roam', 'men', 12400, 'Backend/assets/field-day-high.jpg', 'Field Day chunky everyday sneaker', '', 'green', 6)
 on conflict (name) do nothing;

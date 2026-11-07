@@ -39,6 +39,14 @@ The publishable/anon key is intended for browser use. **Never put a `service_rol
 
 ## 5. Open the product manager
 
-Run the site through a local web server or deploy it to your hosting provider, then visit `/admin.html` and sign in with the admin account. You can add, edit, publish/unpublish, and delete products. Product images can be hosted image URLs or paths in the website, such as `assets/my-shoe.jpg`.
+Run the site through a local web server or deploy it to your hosting provider, then visit `/Backend/admin.html` and sign in with the admin account. You can add, edit, publish/unpublish, and delete products. Product images can be hosted image URLs or paths in the website, such as `Backend/assets/my-shoe.jpg`.
+
+If you already set up Supabase before the images moved, run this once in its SQL Editor to update the existing seed product paths:
+
+```sql
+update public.products
+set image_url = 'Backend/' || image_url
+where image_url like 'assets/%';
+```
 
 If you add image files to the website, upload them to your hosting provider too. Changes made to product data are live in Supabase; the website files still need to be deployed when you change code or add local image files.
