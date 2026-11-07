@@ -40,12 +40,53 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function normalizeAssetPath(path) {
-    return typeof path === 'string' && path.startsWith('assets/') ? `Backend/${path}` : path;
+    if (typeof path !== 'string') return '';
+    const value = path.trim();
+    const githubBlob = value.match(/^https?:\/\/github\.com\/([^/]+\/[^/]+)\/blob\/([^/]+)\/(.+)$/i);
+    if (githubBlob) {
+      const filePath = githubBlob[3].replace(/^assets\//, 'Backend/assets/');
+      return `https://raw.githubusercontent.com/${githubBlob[1]}/${githubBlob[2]}/${filePath}`;
+    }
+
+    if (/^https?:\/\//i.test(value)) {
+      try {
+        const url = new URL(value);
+        if (url.hostname === 'raw.githubusercontent.com' && /\/assets\//.test(url.pathname) && !/\/Backend\/assets\//.test(url.pathname)) {
+          url.pathname = url.pathname.replace('/assets/', '/Backend/assets/');
+          return url.href;
+        }
+      } catch {
+        return value;
+      }
+      return value;
+    }
+
+    const relativePath = value.replace(/^\/+/, '');
+    if (relativePath.startsWith('assets/')) return `Backend/${relativePath}`;
+    return relativePath;
   }
 
   function resolveImageUrl(path) {
     const normalizedPath = normalizeAssetPath(path);
     return new URL(normalizedPath, new URL('../', document.baseURI)).href;
+  }
+
+  function getImageCandidates(path) {
+    const normalizedPath = normalizeAssetPath(path);
+    const first = resolveImageUrl(path);
+    const candidates = [first];
+
+    if (normalizedPath.startsWith('Backend/assets/')) {
+      candidates.push(new URL(normalizedPath.slice('Backend/'.length), new URL('../', document.baseURI)).href);
+    } else if (normalizedPath.startsWith('https://raw.githubusercontent.com/')) {
+      const url = new URL(normalizedPath);
+      if (/\/assets\//.test(url.pathname) && !/\/Backend\/assets\//.test(url.pathname)) {
+        url.pathname = url.pathname.replace('/assets/', '/Backend/assets/');
+        candidates.push(url.href);
+      }
+    }
+
+    return [...new Set(candidates)];
   }
 
   async function verifyAdmin() {
@@ -79,9 +120,20 @@ document.addEventListener('DOMContentLoaded', () => {
     row.className = 'product-row';
 
     const image = document.createElement('img');
-    image.src = resolveImageUrl(product.image_url);
     image.alt = '';
     image.loading = 'lazy';
+    const imageCandidates = getImageCandidates(product.image_url);
+    let imageCandidateIndex = 0;
+    image.addEventListener('error', () => {
+      imageCandidateIndex += 1;
+      if (imageCandidateIndex < imageCandidates.length) {
+        image.src = imageCandidates[imageCandidateIndex];
+        return;
+      }
+      row.classList.add('image-unavailable');
+      console.warn('Product image could not be loaded:', product.image_url);
+    });
+    image.src = imageCandidates[0];
     row.append(image);
 
     const details = document.createElement('div');

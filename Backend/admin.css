@@ -82,6 +82,17 @@ h2 { margin: 0; font-size: 21px; }
 .product-list { display: grid; }
 .product-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; padding: 1rem 0; border-top: 1px solid var(--line); }
 .product-row img { width: 62px; height: 62px; object-fit: cover; background: var(--paper); }
+.product-row.image-unavailable img { visibility: hidden; }
+.product-row.image-unavailable::before {
+  content: "Image unavailable";
+  grid-column: 1;
+  grid-row: 1;
+  width: 62px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+  align-self: center;
+}
 .product-row-details h3 { margin: 0 0 0.2rem; font: 600 14px "Space Grotesk", sans-serif; }
 .product-row-details p { margin: 0; color: var(--muted); font-size: 11px; text-transform: capitalize; }
 .row-actions { display: flex; gap: 0.3rem; }
