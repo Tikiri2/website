@@ -3,6 +3,13 @@
 
   const WHATSAPP_NUMBER = '94775356524';
   const STORE_NAME = 'VENU Shoues';
+  const COURIER_FEE = 250;
+  let orderFile = null;
+  let orderImageURL = '';
+  let pendingOrderText = '';
+  const orderDialog = document.getElementById('order-dialog');
+  const shareOrderButton = document.getElementById('share-order');
+  const shareNote = document.getElementById('share-note');
 
   const params = new URLSearchParams(window.location.search);
   const productId = params.get('id') || '';
@@ -11,7 +18,6 @@
   const els = {
     preview: document.getElementById('preview-image'),
     previewTint: document.getElementById('preview-tint'),
-    previewColour: document.getElementById('preview-colour'),
     colourList: document.getElementById('colour-list'),
     name: document.getElementById('product-name'),
     price: document.getElementById('product-price'),
@@ -281,7 +287,6 @@
     els.preview.style.filter = styles?.filter || 'none';
     els.previewTint.style.background = styles?.tint || 'transparent';
     els.previewTint.style.opacity = String(styles?.opacity || 0);
-    els.previewColour.textContent = colour?.name || 'Colour';
   }
 
   function updateSummary() {
@@ -382,9 +387,47 @@
 
   function setupStepper(input, note, onChange) {
     const step = Number(input.step) || 0.5;
+    const wheel = document.createElement('div');
+    wheel.className = 'value-wheel';
+    wheel.setAttribute('role', 'group');
+    wheel.setAttribute('aria-label', input.getAttribute('aria-label'));
+    input.closest('.stepper').append(wheel);
+    input.tabIndex = -1;
+    let values = [];
+    let valuesKey = '';
+    let scrollTimer;
+    let lastWheel = 0;
 
-    const apply = (raw) => {
-      const bounded = clamp(Number(raw), Number(input.min), Number(input.max));
+    const syncWheel = (value, move) => {
+      const next = input === els.sizeInput ? state.sizes : Array.from(
+        { length: Math.round((Number(input.max) - Number(input.min)) / step) + 1 },
+        (_, index) => Number((Number(input.min) + index * step).toFixed(1))
+      );
+      const key = next.join(',');
+      if (key !== valuesKey) {
+        values = next;
+        valuesKey = key;
+        wheel.replaceChildren(...values.map((item) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'wheel-option';
+          button.textContent = item;
+          button.setAttribute('aria-label', input === els.sizeInput ? `EU ${item}` : `${item} centimetres`);
+          button.addEventListener('click', () => apply(item));
+          return button;
+        }));
+      }
+      [...wheel.children].forEach((button, index) => {
+        const selected = values[index] === value;
+        button.classList.toggle('is-active', selected);
+        button.setAttribute('aria-pressed', String(selected));
+      });
+      if (move) wheel.scrollTop = Math.max(0, values.indexOf(value)) * 36;
+    };
+
+    const apply = (raw, move = true) => {
+      const number = Number(raw);
+      const bounded = clamp(Number.isFinite(number) ? number : Number(input.min), Number(input.min), Number(input.max));
       const availableSizes = input === els.sizeInput ? state.sizes : null;
       const value = availableSizes
         ? availableSizes.reduce((closest, candidate) =>
@@ -393,7 +436,23 @@
         : clamp(Math.round(bounded / step) * step, Number(input.min), Number(input.max));
       input.value = Number(value.toFixed(1)).toString();
       note.textContent = onChange(value);
+      syncWheel(value, move);
     };
+
+    wheel.addEventListener('scroll', () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = window.setTimeout(() => {
+        const index = clamp(Math.round(wheel.scrollTop / 36), 0, values.length - 1);
+        apply(values[index], false);
+      }, 80);
+    });
+    wheel.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      if (!event.deltaY || Date.now() - lastWheel < 110) return;
+      lastWheel = Date.now();
+      const index = values.indexOf(Number(input.value));
+      apply(values[clamp(index + Math.sign(event.deltaY), 0, values.length - 1)]);
+    }, { passive: false });
 
     input.addEventListener('change', () => apply(input.value));
     input.addEventListener('blur', () => apply(input.value));
@@ -425,6 +484,8 @@
       `Size: EU ${state.size}`,
       `Heel height: ${state.heel} cm`,
       `Price: ${formatPrice(Number(state.product.price) || 0)}`,
+      `Courier: ${formatPrice(COURIER_FEE)}`,
+      `Total: ${formatPrice((Number(state.product.price) || 0) + COURIER_FEE)}`,
       `Phone: ${phone}`,
     ].join('\n');
   }
@@ -438,6 +499,121 @@
     els.message.textContent = '';
     els.message.classList.remove('is-error');
   }
+
+  function loadOrderImage(src) {
+    return new Promise((resolve) => {
+      const image = new Image();
+      const timer = window.setTimeout(() => resolve(null), 8000);
+      image.crossOrigin = 'anonymous';
+      image.onload = () => { clearTimeout(timer); resolve(image); };
+      image.onerror = () => { clearTimeout(timer); resolve(null); };
+      image.src = src;
+    });
+  }
+
+  async function createOrderCard(phone) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 900;
+    canvas.height = 1280;
+    const ctx = canvas.getContext('2d');
+    const image = await loadOrderImage(els.preview.currentSrc || els.preview.src);
+    ctx.fillStyle = '#fffaf7';
+    ctx.fillRect(0, 0, 900, 1280);
+    ctx.fillStyle = '#382934';
+    ctx.fillRect(0, 0, 900, 144);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 42px Georgia';
+    ctx.fillText(STORE_NAME, 60, 70);
+    ctx.fillStyle = '#e8bdcf';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('YOUR CUSTOM ORDER  /  MADE FOR YOU', 60, 110);
+    ctx.fillStyle = '#f4e8ed';
+    ctx.fillRect(60, 174, 780, 360);
+    if (image) {
+      const scale = Math.min(740 / image.width, 330 / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      const x = (900 - width) / 2;
+      const y = 189 + (330 - height) / 2;
+      ctx.save();
+      ctx.filter = els.preview.style.filter || 'none';
+      ctx.drawImage(image, x, y, width, height);
+      ctx.restore();
+      if (Number(els.previewTint.style.opacity) > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'color';
+        ctx.globalAlpha = Number(els.previewTint.style.opacity);
+        ctx.fillStyle = els.previewTint.style.background;
+        ctx.fillRect(x, y, width, height);
+        ctx.restore();
+      }
+    } else {
+      ctx.fillStyle = '#897a83';
+      ctx.font = '24px sans-serif';
+      ctx.fillText('Product image unavailable', 280, 360);
+    }
+    ctx.fillStyle = '#a54d70';
+    ctx.font = '17px sans-serif';
+    ctx.fillText('ORDER SUMMARY', 60, 582);
+    ctx.fillStyle = '#382934';
+    ctx.font = '40px Georgia';
+    // Fit long CMS product names without clipping the order details.
+    const words = String(state.product.name || 'Your pair').split(/\s+/);
+    const lines = [''];
+    words.forEach((word) => {
+      const index = lines.length - 1;
+      const candidate = `${lines[index]} ${word}`.trim();
+      if (ctx.measureText(candidate).width > 780 && lines[index]) lines.push(word);
+      else lines[index] = candidate;
+    });
+    lines.slice(0, 2).forEach((line, index) => ctx.fillText(line, 60, 633 + index * 44, 780));
+    const row = (label, value, y, bold = false) => {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#897a83';
+      ctx.font = '23px sans-serif';
+      ctx.fillText(label, 60, y);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#382934';
+      ctx.font = `${bold ? 'bold ' : ''}25px sans-serif`;
+      ctx.fillText(String(value), 840, y, 560);
+      ctx.textAlign = 'left';
+    };
+    row('Colour', state.colour?.name || '—', 730);
+    row('Shoe size', `EU ${state.size}`, 780);
+    row('Heel height', `${state.heel} cm`, 830);
+    ctx.fillStyle = '#e6d8df';
+    ctx.fillRect(60, 865, 780, 1);
+    const price = Number(state.product.price) || 0;
+    row('Product price', formatPrice(price), 914);
+    row('Courier delivery', formatPrice(COURIER_FEE), 964);
+    ctx.fillStyle = '#f0dfe7';
+    ctx.fillRect(40, 996, 820, 88);
+    row('TOTAL', formatPrice(price + COURIER_FEE), 1051, true);
+    row('Customer phone', phone, 1143);
+    ctx.fillStyle = '#897a83';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('Order enquiry · Confirm availability & delivery on WhatsApp', 60, 1212);
+    ctx.fillText(`WhatsApp: +${WHATSAPP_NUMBER}`, 60, 1245);
+    const blob = await new Promise((resolve, reject) => {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Image export failed')), 'image/png');
+    });
+    return { file: new File([blob], 'venu-order.png', { type: 'image/png' }), hasImage: !!image };
+  }
+
+  document.getElementById('close-order').addEventListener('click', () => orderDialog.close());
+  shareOrderButton.addEventListener('click', async () => {
+    if (!orderFile) return;
+    if (navigator.canShare?.({ files: [orderFile] })) {
+      try {
+        await navigator.share({ files: [orderFile], title: `${STORE_NAME} order`, text: pendingOrderText });
+        shareNote.textContent = 'Share sheet closed. Your order is confirmed only after the store replies.';
+      } catch (error) {
+        if (error.name !== 'AbortError') shareNote.textContent = 'Sharing is unavailable. Save the image, then attach it in WhatsApp.';
+      }
+    } else {
+      window.location.assign(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(pendingOrderText)}`);
+    }
+  });
 
   const sizeStepper = setupStepper(els.sizeInput, els.sizeNote, (value) => {
     state.size = value;
@@ -464,7 +640,7 @@
     }
   });
 
-  els.form.addEventListener('submit', (event) => {
+  els.form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const phone = normalizePhone(els.phone.value);
     if (!/^0\d{9}$/.test(phone)) {
@@ -475,9 +651,32 @@
     }
 
     els.phone.removeAttribute('aria-invalid');
-    const summary = orderSummary(phone);
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(summary)}`;
-    window.location.assign(url);
+    if (!state.product || els.orderButton.disabled) return;
+    clearMessage();
+    els.orderButton.disabled = true;
+    els.orderButton.setAttribute('aria-busy', 'true');
+    try {
+      const result = await createOrderCard(phone);
+      orderFile = result.file;
+      pendingOrderText = orderSummary(phone);
+      if (orderImageURL) URL.revokeObjectURL(orderImageURL);
+      orderImageURL = URL.createObjectURL(orderFile);
+      document.getElementById('order-card-image').src = orderImageURL;
+      document.getElementById('save-order').href = orderImageURL;
+      const canShare = navigator.canShare?.({ files: [orderFile] });
+      shareOrderButton.textContent = canShare ? 'Share order image ↗' : 'Open WhatsApp ↗';
+      shareNote.textContent = canShare
+        ? `Choose WhatsApp, then send to the store: +${WHATSAPP_NUMBER}. Courier Rs. 250 is included.`
+        : 'Save the image first, then open WhatsApp and attach it to the chat. Courier Rs. 250 is included.';
+      if (!result.hasImage) shareNote.textContent += ' Product photo could not load; your order details are included.';
+      orderDialog.showModal();
+    } catch (error) {
+      console.warn('Order card could not be created:', error);
+      showMessage('Could not create your order image. Please try again.');
+    } finally {
+      els.orderButton.disabled = false;
+      els.orderButton.removeAttribute('aria-busy');
+    }
   });
 
   (async () => {
