@@ -60,7 +60,7 @@ Run the site through a local web server or deploy it to your hosting provider, t
 The CMS has two tabs:
 
 - **Products** — add, edit, publish/unpublish, and delete heels and sandals. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
-- **Homepage** — edit the announcement bar, hero banner, section headings, story, newsletter, footer and WhatsApp link. You can also add, edit, reorder, publish/unpublish, and delete **mood cards** (the four image tiles that also feed the hero carousel) and **promise cards** (the numbered cards near the bottom). Homepage images are uploaded to the Supabase `site-images` bucket.
+- **Homepage** — edit the announcement bar, hero banner, section headings, story, newsletter, footer and WhatsApp link. You can also add, edit, reorder, publish/unpublish, and delete **mood cards** (the five image tiles that also feed the hero carousel) and **promise cards** (the numbered cards near the bottom). Homepage images are uploaded to the Supabase `site-images` bucket.
 
 Homepage text is edited as plain text. For the announcement bar and scrolling ticker, put one item per line. Use the italic line fields for the script-style second line of a heading.
 

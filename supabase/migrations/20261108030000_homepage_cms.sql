@@ -159,7 +159,8 @@ from (values
   ('mood', 'Night out', '', 'Backend/assets/heel-pink.jpg', 'Pink heels for an evening out', '#shop', 'heels', 1),
   ('mood', 'Soft & lovely', '', 'Backend/assets/mood-soft-lovely.jpg', 'Elegant cream sandal against a warm pink studio backdrop', '#shop', 'sandals', 2),
   ('mood', 'Everyday ease', '', 'Backend/assets/mood-everyday-ease.jpg', 'Comfortable white sandals worn against lush green leaves', '#shop', 'sandals', 3),
-  ('mood', 'Golden hour', '', 'Backend/assets/mood-golden-hour.jpg', 'Golden sandals glowing in the late afternoon sun', '#shop', 'heels', 4)
+  ('mood', 'Golden hour', '', 'Backend/assets/mood-golden-hour.jpg', 'Golden sandals glowing in the late afternoon sun', '#shop', 'heels', 4),
+  ('mood', 'Statement red', '', 'Backend/assets/heel-red-ribbon.jpg', 'Bold red heels tied with a satin ribbon', '#shop', 'heels', 5)
 ) as seed(section, title, body, image_url, image_alt, link_url, link_filter, display_order)
 where not exists (select 1 from public.site_cards where section = 'mood');
 

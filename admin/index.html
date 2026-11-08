@@ -94,6 +94,16 @@
                 </label>
                 <label>Display order<input name="display_order" type="number" step="1" value="0" /></label>
               </div>
+              <div class="field-row">
+                <label>Colours <span class="optional">(optional)</span>
+                  <input name="colors" placeholder="Rose:#c93728, Ivory:#eee9dc" />
+                  <span class="field-help">Name:hex pairs, separated by commas. Shown on the product page.</span>
+                </label>
+                <label>EU sizes <span class="optional">(optional)</span>
+                  <input name="sizes" placeholder="36, 37, 38, 39, 40" />
+                  <span class="field-help">Comma separated. Used by the custom order page. Leave blank for 36–40.</span>
+                </label>
+              </div>
               <label class="checkbox-label"><input name="published" type="checkbox" checked /> Show this product in the shop</label>
               <button id="save-product" class="button button-primary" type="submit">Add product</button>
             </form>
@@ -149,7 +159,7 @@
                       <option value="mood">Mood card (image tile)</option>
                       <option value="promise">Promise card (numbered)</option>
                     </select>
-                    <span class="field-help">The first four published mood cards appear in the shop and hero carousel.</span>
+                    <span class="field-help">The first five published mood cards appear in the shop and hero carousel.</span>
                   </label>
                   <label>Title<input name="title" maxlength="100" required /></label>
                   <label data-card-field="promise">Description<textarea name="body" maxlength="300" rows="3"></textarea></label>

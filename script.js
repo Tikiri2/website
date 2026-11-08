@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const newsletterForm = document.querySelector('.newsletter-form');
 
   const FREE_DELIVERY = 10000;
-  const STORAGE = { cart: 'shues.cart.v1', favorites: 'shues.favorites.v1' };
+  const STORAGE = { cart: 'shues.cart.v1' };
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   let activeFilter = 'all';
@@ -57,6 +57,22 @@ document.addEventListener('DOMContentLoaded', () => {
       .filter(Boolean);
   }
 
+  // Snapshot the hand-written mood cards before the CMS replaces them, so the
+  // shop and hero carousel always keep five cards even if the database has fewer.
+  const defaultMoodCards = [...document.querySelectorAll('[data-cms-cards="mood"] .category-tile')]
+    .map((tile) => {
+      const image = tile.querySelector('img');
+      if (!image) return null;
+      return {
+        title: tile.querySelector('span')?.firstChild?.textContent.trim() || '',
+        image_url: image.getAttribute('src'),
+        image_alt: image.alt,
+        link_url: tile.getAttribute('href') || '#shop',
+        link_filter: tile.dataset.navFilter || '',
+      };
+    })
+    .filter(Boolean);
+
   function initHeroCarousel(slides) {
     if (!heroGallery || !heroCarouselToggle || !slides.length) return;
 
@@ -67,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     heroGallery.querySelectorAll('[data-hero-slide]').forEach((slide) => slide.remove());
 
-    const visibleSlides = slides.slice(0, 4);
+    const visibleSlides = slides.slice(0, 5);
     const slideElements = visibleSlides.map((slide) => {
       const figure = document.createElement('figure');
       figure.className = 'hero-fashion-card';
@@ -90,9 +106,17 @@ document.addEventListener('DOMContentLoaded', () => {
       2: ['is-center', 'is-right'],
       3: ['is-center', 'is-right', 'is-left'],
       4: ['is-center', 'is-right', 'is-back', 'is-left'],
+      5: ['is-center', 'is-right', 'is-back-right', 'is-back-left', 'is-left'],
     };
     const slidePositions = positionsByCount[slideElements.length] || positionsByCount[4];
-    const allPositions = ['is-center', 'is-right', 'is-back', 'is-left'];
+    const allPositions = [
+      'is-center',
+      'is-right',
+      'is-back',
+      'is-back-right',
+      'is-back-left',
+      'is-left',
+    ];
     let activeSlide = 0;
     let carouselTimer;
     let isPaused = false;
@@ -213,11 +237,95 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  const favorites = new Set(
-    (readJSON(STORAGE.favorites, []) || []).filter((name) => typeof name === 'string')
-  );
-
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  function normalizeColorOptions(colors) {
+    if (!Array.isArray(colors)) return [];
+    return colors
+      .map((color) => {
+        if (!color || typeof color !== 'object') return null;
+        const name = String(color.name || '').trim();
+        let hex = String(color.hex || '').trim();
+        if (hex && !hex.startsWith('#')) hex = `#${hex}`;
+        if (!/^#[0-9a-f]{3,8}$/i.test(hex)) return null;
+        return { name: name || 'Colour', hex };
+      })
+      .filter(Boolean);
+  }
+
+  function openProductPage(card) {
+    const url = new URL('product.html', window.location.href);
+    if (card.dataset.id) url.searchParams.set('id', card.dataset.id);
+    else if (card.dataset.name) url.searchParams.set('name', card.dataset.name);
+    try {
+      sessionStorage.setItem('venu.return.scroll', String(window.scrollY));
+      sessionStorage.setItem(
+        'venu.product',
+        JSON.stringify({
+          id: card.dataset.id || '',
+          name: card.dataset.name || '',
+          price: Number(card.dataset.price) || 0,
+          category: card.dataset.category || '',
+          description: card.querySelector('.product-info p')?.textContent || '',
+          image_url: card.querySelector('img')?.getAttribute('src') || '',
+          image_alt: card.querySelector('img')?.alt || '',
+        })
+      );
+    } catch {
+      /* storage unavailable — history back still restores the page */
+    }
+    window.location.href = url.href;
+  }
+
+  function decorateProductCard(card) {
+    const imageWrap = card.querySelector('.product-image');
+    if (!imageWrap) return;
+
+    if (!card.hasAttribute('tabindex')) {
+      card.tabIndex = 0;
+      card.setAttribute('role', 'link');
+      card.setAttribute('aria-label', `Order ${card.dataset.name || 'this pair'}`);
+    }
+
+    let inner = card.querySelector(':scope > .product-card-inner');
+    if (!inner) {
+      inner = document.createElement('div');
+      inner.className = 'product-card-inner';
+      while (card.firstChild) inner.append(card.firstChild);
+      card.append(inner);
+    }
+
+    if (!card.querySelector('.order-now-button')) {
+      const orderButton = document.createElement('button');
+      orderButton.type = 'button';
+      orderButton.className = 'order-now-button';
+      orderButton.append(document.createTextNode('Order Now '));
+      const orderArrow = document.createElement('span');
+      orderArrow.setAttribute('aria-hidden', 'true');
+      orderArrow.textContent = '↗';
+      orderButton.append(orderArrow);
+      imageWrap.insertAdjacentElement('afterend', orderButton);
+    }
+
+    if (imageWrap.querySelector('.product-actions')) return;
+
+    const actions = document.createElement('div');
+    actions.className = 'product-actions';
+
+    const addButton = imageWrap.querySelector('.quick-add') || document.createElement('button');
+    addButton.className = 'quick-add';
+    addButton.type = 'button';
+    addButton.setAttribute('aria-label', `Add ${card.dataset.name || 'this pair'} to bag`);
+    addButton.title = 'Add to bag';
+    addButton.replaceChildren();
+    const plus = document.createElement('span');
+    plus.setAttribute('aria-hidden', 'true');
+    plus.textContent = '+';
+    addButton.append(plus);
+
+    actions.append(addButton);
+    imageWrap.append(actions);
+  }
 
   function createProductCard(product) {
     const card = document.createElement('article');
@@ -227,6 +335,9 @@ document.addEventListener('DOMContentLoaded', () => {
     card.dataset.name = product.name;
     card.dataset.price = product.price;
     card.dataset.reveal = '';
+
+    const inner = document.createElement('div');
+    inner.className = 'product-card-inner';
 
     const imageWrap = document.createElement('div');
     imageWrap.className = `product-image image-${product.image_tone || 'coral'}`;
@@ -238,31 +349,13 @@ document.addEventListener('DOMContentLoaded', () => {
       imageWrap.append(badge);
     }
 
-    const favorite = document.createElement('button');
-    favorite.className = 'favorite-button';
-    favorite.type = 'button';
-    favorite.setAttribute('aria-label', `Save ${product.name}`);
-    favorite.setAttribute('aria-pressed', String(favorites.has(product.name)));
-    favorite.textContent = favorites.has(product.name) ? '♥' : '♡';
-    imageWrap.append(favorite);
-
     const image = document.createElement('img');
     image.src = normalizeAssetPath(product.image_url);
     image.alt = product.image_alt || product.name;
     image.loading = 'lazy';
     image.decoding = 'async';
     imageWrap.append(image);
-
-    const addButton = document.createElement('button');
-    addButton.className = 'quick-add';
-    addButton.type = 'button';
-    addButton.append(document.createTextNode('Add to bag '));
-    const plus = document.createElement('span');
-    plus.setAttribute('aria-hidden', 'true');
-    plus.textContent = '+';
-    addButton.append(plus);
-    imageWrap.append(addButton);
-    card.append(imageWrap);
+    inner.append(imageWrap);
 
     const info = document.createElement('div');
     info.className = 'product-info';
@@ -275,7 +368,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const price = document.createElement('strong');
     price.textContent = formatPrice(product.price);
     info.append(details, price);
-    card.append(info);
+    inner.append(info);
+
+    const colors = normalizeColorOptions(product.colors);
+    if (colors.length) {
+      const meta = document.createElement('div');
+      meta.className = 'product-meta';
+      colors.slice(0, 4).forEach((color) => {
+        const swatch = document.createElement('span');
+        swatch.className = 'swatch';
+        swatch.style.background = color.hex;
+        swatch.setAttribute('aria-label', color.name);
+        swatch.title = color.name;
+        meta.append(swatch);
+      });
+      const count = document.createElement('span');
+      count.className = 'color-count';
+      count.textContent = `${colors.length} ${colors.length === 1 ? 'colour' : 'colours'}`;
+      meta.append(count);
+      inner.append(meta);
+    }
+
+    card.append(inner);
+    decorateProductCard(card);
     return card;
   }
 
@@ -288,7 +403,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderMoodCards(items) {
     if (!moodGrid) return;
-    const tiles = items.slice(0, 4).map((item) => {
+    const seen = new Set();
+    const merged = [...items, ...defaultMoodCards].filter((item) => {
+      const key = String(item.title || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const tiles = merged.slice(0, 5).map((item) => {
       const tile = document.createElement('a');
       tile.className = 'category-tile';
       tile.href = item.link_url || '#shop';
@@ -361,22 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
     track.replaceChildren(...groups);
   }
 
-  function renderTicker(items) {
-    const track = document.querySelector('[data-cms-list="ticker"]');
-    if (!track || !items.length) return;
-    const children = [];
-    [0, 1].forEach(() => {
-      items.forEach((text) => {
-        const span = document.createElement('span');
-        span.textContent = text;
-        const star = document.createElement('i');
-        star.textContent = '✦';
-        children.push(span, star);
-      });
-    });
-    track.replaceChildren(...children);
-  }
-
   function applySiteContent(rows) {
     const content = new Map(rows.map((row) => [row.key, row.value]));
 
@@ -407,7 +513,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     renderAnnouncement(splitLines(content.get('announcement_items')));
-    renderTicker(splitLines(content.get('ticker_items')));
   }
 
   /* ---------------------------------------------------------
@@ -480,9 +585,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   productGrid.addEventListener('click', (event) => {
     const button = event.target.closest('button');
-    if (!button) return;
-    const card = button.closest('.product-card');
+    const card = event.target.closest('.product-card');
     if (!card) return;
+
+    if (!button) {
+      openProductPage(card);
+      return;
+    }
 
     if (button.classList.contains('quick-add')) {
       const id = card.dataset.id || card.dataset.name;
@@ -501,16 +610,18 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (button.classList.contains('favorite-button')) {
-      const name = card.dataset.name;
-      const isFavorite = button.getAttribute('aria-pressed') === 'true';
-      button.setAttribute('aria-pressed', String(!isFavorite));
-      button.textContent = isFavorite ? '♡' : '♥';
-      if (isFavorite) favorites.delete(name);
-      else favorites.add(name);
-      writeJSON(STORAGE.favorites, [...favorites]);
-      showToast(isFavorite ? 'Removed from saved pairs' : 'Pair saved for later');
+    if (button.classList.contains('order-now-button')) {
+      openProductPage(card);
     }
+  });
+
+  productGrid.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    if (event.target.closest('button')) return;
+    const card = event.target.closest('.product-card');
+    if (!card) return;
+    event.preventDefault();
+    openProductPage(card);
   });
 
   /* ---------------------------------------------------------
@@ -705,6 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   registerReveal(document.querySelectorAll('[data-reveal]'));
+  cards.forEach(decorateProductCard);
 
   updateCart();
 
@@ -724,7 +836,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadCmsProducts(client) {
     const { data, error } = await client
       .from('products')
-      .select('id, name, description, category, price, image_url, image_alt, badge, image_tone')
+      .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes')
       .eq('published', true)
       .in('category', ['heels', 'sandals'])
       .order('display_order', { ascending: true })
@@ -780,6 +892,19 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   initHeroCarousel(getMoodSlidesFromDom());
+
+  try {
+    const returnScroll = sessionStorage.getItem('venu.return.scroll');
+    if (returnScroll !== null) {
+      sessionStorage.removeItem('venu.return.scroll');
+      const top = Number(returnScroll);
+      if (Number.isFinite(top)) {
+        window.addEventListener('load', () => window.scrollTo({ top }), { once: true });
+      }
+    }
+  } catch {
+    /* storage unavailable — browser history still restores the scroll position */
+  }
 
   initCms().catch((error) => {
     console.error('Could not load CMS data:', error);

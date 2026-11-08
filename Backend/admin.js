@@ -861,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadProducts() {
     const { data, error } = await client
       .from('products')
-      .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, published, display_order')
+      .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes, published, display_order')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
     if (error) {
@@ -874,6 +874,49 @@ document.addEventListener('DOMContentLoaded', () => {
     updatePanelCount();
   }
 
+  function formatColourOptions(colors) {
+    if (!Array.isArray(colors)) return '';
+    return colors
+      .map((color) => {
+        if (!color || typeof color !== 'object') return '';
+        const name = String(color.name || '').trim();
+        const hex = String(color.hex || '').trim();
+        if (!name && !hex) return '';
+        return `${name || 'Colour'}:${hex || '#d9c9cf'}`;
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  function formatSizeOptions(sizes) {
+    if (!Array.isArray(sizes)) return '';
+    return sizes.map((size) => String(size)).filter(Boolean).join(', ');
+  }
+
+  function parseColourOptions(value) {
+    return String(value || '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .slice(0, 8)
+      .map((part) => {
+        const separator = part.indexOf(':');
+        const name = (separator === -1 ? part : part.slice(0, separator)).trim();
+        let hex = (separator === -1 ? '' : part.slice(separator + 1)).trim();
+        if (hex && !hex.startsWith('#')) hex = `#${hex}`;
+        if (!/^#[0-9a-f]{3,8}$/i.test(hex)) hex = '#d9c9cf';
+        return { name: name || 'Colour', hex };
+      });
+  }
+
+  function parseSizeOptions(value) {
+    return String(value || '')
+      .split(',')
+      .map((part) => Number(part.trim()))
+      .filter((size) => Number.isFinite(size) && size > 0)
+      .slice(0, 20);
+  }
+
   function startEditing(product) {
     editingId = product.id;
     editingImageUrl = product.image_url;
@@ -883,6 +926,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (input.type === 'checkbox') input.checked = Boolean(value);
       else input.value = field === 'image_url' ? normalizeAssetPath(value ?? '') : value ?? '';
     }
+    productForm.elements.namedItem('colors').value = formatColourOptions(product.colors);
+    productForm.elements.namedItem('sizes').value = formatSizeOptions(product.sizes);
     imageFileInput.required = false;
     showImagePreview(resolveImageUrl(editingImageUrl), 'Current product image');
     formTitle.textContent = 'Edit product';
@@ -973,6 +1018,8 @@ document.addEventListener('DOMContentLoaded', () => {
       image_alt: String(formData.get('image_alt')).trim(),
       badge: String(formData.get('badge')).trim(),
       image_tone: String(formData.get('image_tone')),
+      colors: parseColourOptions(formData.get('colors')),
+      sizes: parseSizeOptions(formData.get('sizes')),
       published: formData.has('published'),
       display_order: Number(formData.get('display_order')) || 0,
     };

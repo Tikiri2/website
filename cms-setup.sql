@@ -13,6 +13,10 @@ create table if not exists public.products (
   badge text not null default '',
   image_tone text not null default 'coral'
     check (image_tone in ('coral', 'blue', 'lime', 'lilac', 'yellow', 'green')),
+  colors jsonb not null default '[]'::jsonb
+    check (jsonb_typeof(colors) = 'array'),
+  sizes jsonb not null default '[]'::jsonb
+    check (jsonb_typeof(sizes) = 'array'),
   published boolean not null default true,
   display_order integer not null default 0,
   created_at timestamptz not null default now()
@@ -87,14 +91,26 @@ create policy "Allowlisted admins can upload product images"
   );
 
 insert into public.products
-  (name, description, category, price, image_url, image_alt, badge, image_tone, display_order)
+  (name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes, display_order)
 values
-  ('Golden Hour Heel', 'A touch of gold for your evening plans', 'heels', 12900, 'Backend/assets/heel-golden-hour.jpg', 'Gold strappy women''s heel sandal', 'BESTSELLER', 'coral', 1),
-  ('Ruby Ribbon Heel', 'A playful pop of red for going out', 'heels', 10900, 'Backend/assets/heel-red-ribbon.jpg', 'Red women''s heels with ribbon-style straps', 'JUST LANDED', 'blue', 2),
-  ('Golden Arch Heel', 'A little shimmer, made for celebrations', 'heels', 11900, 'Backend/assets/heel-gold-arch.jpg', 'Gold open-toe women''s occasion heels', '', 'lime', 3),
-  ('Floral Footbed Sandal', 'Easy, pretty and ready for everyday', 'sandals', 5900, 'Backend/assets/sandal-black-flower.jpg', 'Printed women''s flat sandals with flower detail', 'COMFY CUTE', 'lilac', 4),
-  ('Sunset Strap Sandal', 'Your comfy favourite for sunny days', 'sandals', 6900, 'Backend/assets/sandal-orange-strap.jpg', 'Orange and cream women''s strap sandals', 'EVERYDAY FAVOURITE', 'yellow', 5),
-  ('Blush Charm Sandal', 'Pretty little details for everyday wear', 'sandals', 7900, 'Backend/assets/sandal-brown-charm.jpg', 'Women''s sandals with decorative charm straps', '', 'green', 6)
+  ('Golden Hour Heel', 'A touch of gold for your evening plans', 'heels', 12900, 'Backend/assets/heel-golden-hour.jpg', 'Gold strappy women''s heel sandal', 'BESTSELLER', 'coral',
+    '[{"name":"Rose","hex":"#c93728"},{"name":"Gold","hex":"#c9a227"},{"name":"Ivory","hex":"#eee9dc"}]'::jsonb,
+    '[36,37,38,39,40]'::jsonb, 1),
+  ('Ruby Ribbon Heel', 'A playful pop of red for going out', 'heels', 10900, 'Backend/assets/heel-red-ribbon.jpg', 'Red women''s heels with ribbon-style straps', 'JUST LANDED', 'blue',
+    '[{"name":"Ruby","hex":"#b3202a"},{"name":"Ivory","hex":"#eee9dc"},{"name":"Black","hex":"#2b2b2b"}]'::jsonb,
+    '[36,37,38,39,40]'::jsonb, 2),
+  ('Golden Arch Heel', 'A little shimmer, made for celebrations', 'heels', 11900, 'Backend/assets/heel-gold-arch.jpg', 'Gold open-toe women''s occasion heels', '', 'lime',
+    '[{"name":"Gold","hex":"#c9a227"},{"name":"Rose","hex":"#c93728"},{"name":"Lilac","hex":"#b9a7d6"}]'::jsonb,
+    '[36,37,38,39,40]'::jsonb, 3),
+  ('Floral Footbed Sandal', 'Easy, pretty and ready for everyday', 'sandals', 5900, 'Backend/assets/sandal-black-flower.jpg', 'Printed women''s flat sandals with flower detail', 'COMFY CUTE', 'lilac',
+    '[{"name":"Maroon","hex":"#7d2b34"},{"name":"Cream","hex":"#eee9dc"},{"name":"Black","hex":"#2b2b2b"}]'::jsonb,
+    '[36,37,38,39,40]'::jsonb, 4),
+  ('Sunset Strap Sandal', 'Your comfy favourite for sunny days', 'sandals', 6900, 'Backend/assets/sandal-orange-strap.jpg', 'Orange and cream women''s strap sandals', 'EVERYDAY FAVOURITE', 'yellow',
+    '[{"name":"Sand","hex":"#d9b382"},{"name":"Olive","hex":"#7d8c5c"},{"name":"Cream","hex":"#eee9dc"}]'::jsonb,
+    '[36,37,38,39,40]'::jsonb, 5),
+  ('Blush Charm Sandal', 'Pretty little details for everyday wear', 'sandals', 7900, 'Backend/assets/sandal-brown-charm.jpg', 'Women''s sandals with decorative charm straps', '', 'green',
+    '[{"name":"Blue","hex":"#8096ae"},{"name":"Cream","hex":"#eee9dc"},{"name":"Tan","hex":"#a9775a"}]'::jsonb,
+    '[36,37,38,39,40]'::jsonb, 6)
 on conflict (name) do nothing;
 
 -- Homepage text content (hero, headings, story, newsletter, footer).
@@ -261,7 +277,8 @@ from (values
   ('mood', 'Night out', '', 'Backend/assets/heel-pink.jpg', 'Pink heels for an evening out', '#shop', 'heels', 1),
   ('mood', 'Soft & lovely', '', 'Backend/assets/mood-soft-lovely.jpg', 'Elegant cream sandal against a warm pink studio backdrop', '#shop', 'sandals', 2),
   ('mood', 'Everyday ease', '', 'Backend/assets/mood-everyday-ease.jpg', 'Comfortable white sandals worn against lush green leaves', '#shop', 'sandals', 3),
-  ('mood', 'Golden hour', '', 'Backend/assets/mood-golden-hour.jpg', 'Golden sandals glowing in the late afternoon sun', '#shop', 'heels', 4)
+  ('mood', 'Golden hour', '', 'Backend/assets/mood-golden-hour.jpg', 'Golden sandals glowing in the late afternoon sun', '#shop', 'heels', 4),
+  ('mood', 'Statement red', '', 'Backend/assets/heel-red-ribbon.jpg', 'Bold red heels tied with a satin ribbon', '#shop', 'heels', 5)
 ) as seed(section, title, body, image_url, image_alt, link_url, link_filter, display_order)
 where not exists (select 1 from public.site_cards where section = 'mood');
 
