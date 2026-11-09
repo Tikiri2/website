@@ -339,3 +339,17 @@ h2 { margin: 0; font-size: 21px; }
   .row-actions { grid-column: 2; }
   .user-access-form { align-items: stretch; flex-direction: column; }
 }
+/* Orders */
+.order-filters { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; margin: 24px 0; }
+.order-filters label { display: grid; gap: 8px; flex: 1; min-width: 180px; }
+.order-list { display: grid; gap: 16px; }
+.order-record { border: 1px solid #e6d8df; border-radius: 16px; overflow: hidden; }
+.order-record summary { cursor: pointer; padding: 20px; overflow-wrap: anywhere; }
+.order-record summary span { display: block; margin-top: 8px; font-size: 13px; color: #756770; }
+.order-record-body { padding: 0 20px 20px; overflow-wrap: anywhere; }
+.order-record-body .row-actions { margin: 20px 0; flex-wrap: wrap; }
+.order-pagination { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 24px; }
+.cms-order-preview { width: min(640px, 94vw); max-height: 90vh; padding: 20px; border: 0; border-radius: 20px; }
+.cms-order-preview::backdrop { background: #20141dbb; }
+.cms-order-preview img { display: block; width: 100%; height: auto; }
+.cms-order-preview img[hidden] { display: none; }

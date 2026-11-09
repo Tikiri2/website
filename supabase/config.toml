@@ -1,1 +1,4 @@
 project_id = "shues-website"
+
+[functions.create-order]
+verify_jwt = false

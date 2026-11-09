@@ -57,10 +57,11 @@ If your shop already existed before the homepage CMS was added, pushing the new 
 
 Run the site through a local web server or deploy it to your hosting provider, then visit `/admin/` and sign in with the admin account. On GitHub Pages, the full URL is `https://your-user.github.io/your-repository/admin/`.
 
-The CMS has two tabs:
+The CMS has three tabs:
 
 - **Products** — add, edit, publish/unpublish, and delete heels and sandals. Select a JPG, PNG, WebP, or AVIF image up to 5 MB; it is uploaded to the Supabase `product-images` bucket and displayed in the shop.
 - **Homepage** — edit the announcement bar, hero banner, section headings, story, newsletter, footer and WhatsApp link. You can also add, edit, reorder, publish/unpublish, and delete **mood cards** (the five image tiles that also feed the hero carousel) and **promise cards** (the numbered cards near the bottom). Homepage images are uploaded to the Supabase `site-images` bucket.
+- **Orders** — view saved custom orders and their private images, filter by status/customer phone, contact the customer, change status (New → Confirmed → Making → Shipped → Completed, or Cancelled), and save internal notes. Orders are paginated, newest first. Refresh to fetch new submissions. Concurrent edits are detected rather than silently overwritten.
 
 Homepage text is edited as plain text. For the announcement bar and scrolling ticker, put one item per line. Use the italic line fields for the script-style second line of a heading.
 
@@ -75,3 +76,21 @@ where image_url like 'assets/%';
 ```
 
 If you add image files to the website, upload them to your hosting provider too. Changes made to products and homepage content are live in Supabase; the website files still need to be deployed when you change code or add local image files.
+
+## 7. Enable saved orders and WhatsApp image links
+
+Deploy the website changes **and** the backend before using this flow:
+
+1. Apply `supabase/migrations/20261109010000_orders.sql` to the existing project (do not rerun old migrations). This adds the private orders table, private `order-images` bucket, admin-only read/update policies, and backend rate limits.
+2. Deploy the Edge Function: `supabase functions deploy create-order --project-ref YOUR_PROJECT_REF`. Its config uses `verify_jwt = false` because customers do not sign in and publishable API keys are not JWTs. The function validates submissions, bounds uploads to 3 MB, checks the current published product/price on the server, and rate-limits IPs and phone numbers. The service-role key stays in Supabase's function environment, never in website JavaScript.
+3. Alternatively, push these changes to `main` with the repository secrets from step 5 configured: the existing GitHub Actions workflow now applies migrations and deploys the function. Check that both steps finish successfully.
+4. Use a **live CMS product**, not a local preview product. Confirming an order generates the PNG and saves the order and image. The preview's **Continue to WhatsApp** button opens the shop chat with the order reference and a **7-day signed image link**. The customer must still tap **Send** in WhatsApp. This is a link, not an attached image; WhatsApp thumbnail previews are not guaranteed.
+5. Sign in to `/admin/` → **Orders** to manage the submission. A saved/New order does **not** prove WhatsApp was sent, payment was received, or the order was confirmed. Confirm with the customer. Upload failures can leave a visible order without an image; retrying the unchanged submission on the same page uses the same request key instead of creating another order.
+
+The image contains a phone number. Anyone holding its signed link can view it until it expires; avoid forwarding links unnecessarily. Expiry blocks link access, not storage retention. Orders/images remain private and available to allowlisted CMS admins until removed by the project operator. Set your own retention/cleanup policy in Supabase. Admin image previews use fresh 5-minute signed URLs, so they continue to work after customer links expire. Internal notes never appear in the customer link or WhatsApp message. The stored structured details use server-checked pricing; the PNG itself is customer-submitted and should not be treated as payment proof.
+
+Anonymous ordering has basic abuse limits (30 attempts per IP/hour, 10 new-order attempts per phone/hour); this is not a replacement for CAPTCHA or gateway-level abuse protection on a busy public shop. Customer image links intentionally use bearer access, whereas order lists and management require CMS-admin authentication.
+
+### Development checks
+
+Run `node --test tests/*.test.cjs` with Node 22.18+ for mocked backend and CMS regression tests, and `npx --yes deno check supabase/functions/create-order/index.ts` for function type checking. These checks do not apply migrations, upload live orders, or send WhatsApp messages. After deployment, separately verify anonymous users cannot list orders/read unsigned images, non-admin signed-in users cannot manage orders, and an allowlisted admin can view images and update status/notes.

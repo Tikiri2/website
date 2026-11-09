@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveCardButton = document.getElementById('save-card');
   const cancelCardEditButton = document.getElementById('cancel-card-edit');
   let client;
+  let ordersManager;
+  let orderTotal = 0;
   let editingId = null;
   let editingImageUrl = '';
   let previewObjectUrl = '';
@@ -144,8 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   function updatePanelCount() {
-    const count = activeTab === 'products' ? productTotal : cardTotal;
-    const label = activeTab === 'products' ? 'product' : 'card';
+    const count = activeTab === 'orders' ? orderTotal : activeTab === 'products' ? productTotal : cardTotal;
+    const label = activeTab === 'orders' ? 'order' : activeTab === 'products' ? 'product' : 'card';
     panelCount.textContent = `${count} ${label}${count === 1 ? '' : 's'}`;
   }
 
@@ -158,12 +160,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     productsTab.hidden = tab !== 'products';
     homepageTab.hidden = tab !== 'homepage';
-    panelTitle.textContent = tab === 'products' ? 'Products' : 'Homepage';
+    document.getElementById('orders-tab').hidden = tab !== 'orders';
+    panelTitle.textContent = tab === 'orders' ? 'Orders' : tab === 'products' ? 'Products' : 'Homepage';
     panelDescription.textContent =
       tab === 'products'
         ? "Manage your women's heels and sandals. Published products appear in your online shop."
+        : tab === 'orders' ? 'Review order images, contact customers and manage fulfilment.'
         : 'Change the images, cards and words on your homepage. Start with the Images tab.';
     updatePanelCount();
+    if (tab === 'orders') ordersManager?.load();
   }
 
   function setSubTab(tab) {
@@ -724,6 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showSignedOut() {
+    ordersManager?.clear();
     loginPanel.hidden = false;
     cmsPanel.hidden = true;
     signOutButton.hidden = true;
@@ -1151,6 +1157,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   try {
     client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    ordersManager = window.createOrdersManager(client, setStatus, (count) => {
+      orderTotal = count;
+      updatePanelCount();
+    });
+    client.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') showSignedOut();
+    });
   } catch (error) {
     setStatus(`CMS could not start: ${error.message}`, true);
     return;

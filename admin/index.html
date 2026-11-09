@@ -51,6 +51,7 @@
         <nav class="cms-tabs" aria-label="CMS sections">
           <button class="cms-tab is-active" type="button" data-tab="products" aria-pressed="true">Products</button>
           <button class="cms-tab" type="button" data-tab="homepage" aria-pressed="false">Homepage</button>
+          <button class="cms-tab" type="button" data-tab="orders" aria-pressed="false">Orders</button>
         </nav>
 
         <div id="products-tab" class="cms-layout">
@@ -122,6 +123,21 @@
               <input id="admin-user-email" name="email" type="email" autocomplete="off" placeholder="name@example.com" required />
               <button id="add-admin-user" class="button button-primary" type="submit">Give CMS access</button>
             </form>
+          </section>
+        </div>
+
+        <div id="orders-tab" hidden>
+          <section class="panel">
+            <div class="section-heading"><h2>Customer orders</h2><button id="refresh-orders" class="text-button" type="button">Refresh</button></div>
+            <p class="panel-description">Orders are saved before WhatsApp opens. “New” does not mean the customer sent the WhatsApp message or paid. Confirm with the customer before making their pair.</p>
+            <form id="order-filters" class="order-filters">
+              <label>Status<select id="order-status-filter"><option value="">All statuses</option><option value="new">New</option><option value="confirmed">Confirmed</option><option value="making">Making</option><option value="shipped">Shipped</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+              <label>Customer phone<input id="order-search" type="search" placeholder="0771234567" maxlength="20" /></label>
+              <button class="button button-outline" type="submit">Filter</button>
+            </form>
+            <p id="orders-message" role="status" aria-live="polite"></p>
+            <div id="order-list" class="order-list"></div>
+            <div class="order-pagination"><button id="orders-prev" class="text-button" type="button">← Previous</button><span id="orders-page"></span><button id="orders-next" class="text-button" type="button">Next →</button></div>
           </section>
         </div>
 
@@ -215,8 +231,14 @@
       <p id="status-message" class="status-message" role="status" aria-live="polite"></p>
     </main>
 
+    <dialog id="cms-order-preview" class="cms-order-preview">
+      <button id="close-cms-order-preview" type="button" class="button button-outline">Close preview</button>
+      <p id="cms-order-preview-message" role="status"></p>
+      <img id="cms-order-image" alt="Saved customer order image" />
+    </dialog>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../cms-config.js"></script>
+    <script src="../Backend/orders.js"></script>
     <script src="../Backend/admin.js"></script>
   </body>
 </html>

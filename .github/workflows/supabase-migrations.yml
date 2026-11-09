@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - "supabase/config.toml"
       - ".github/workflows/supabase-migrations.yml"
   workflow_dispatch:
 
@@ -46,3 +48,6 @@ jobs:
 
       - name: Apply pending migrations
         run: supabase db push --linked --yes
+
+      - name: Deploy order submission function
+        run: supabase functions deploy create-order --project-ref "$SUPABASE_PROJECT_ID"

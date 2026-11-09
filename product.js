@@ -6,7 +6,9 @@
   const COURIER_FEE = 250;
   let orderFile = null;
   let orderImageURL = '';
-  let pendingOrderText = '';
+  let savedOrder = null;
+  let orderRequestKey = '';
+  let orderFingerprint = '';
   const orderDialog = document.getElementById('order-dialog');
   const shareOrderButton = document.getElementById('share-order');
   const shareNote = document.getElementById('share-note');
@@ -426,6 +428,7 @@
     };
 
     const apply = (raw, move = true) => {
+      if (input.disabled) return;
       const number = Number(raw);
       const bounded = clamp(Number.isFinite(number) ? number : Number(input.min), Number(input.min), Number(input.max));
       const availableSizes = input === els.sizeInput ? state.sizes : null;
@@ -474,20 +477,6 @@
     if (digits.startsWith('0094')) digits = digits.slice(2);
     if (digits.startsWith('94') && digits.length === 11) digits = `0${digits.slice(2)}`;
     return digits;
-  }
-
-  function orderSummary(phone) {
-    return [
-      `Hi ${STORE_NAME}, I'd like to order this custom pair:`,
-      `Style: ${state.product.name}`,
-      `Colour: ${state.colour?.name || '—'}`,
-      `Size: EU ${state.size}`,
-      `Heel height: ${state.heel} cm`,
-      `Price: ${formatPrice(Number(state.product.price) || 0)}`,
-      `Courier: ${formatPrice(COURIER_FEE)}`,
-      `Total: ${formatPrice((Number(state.product.price) || 0) + COURIER_FEE)}`,
-      `Phone: ${phone}`,
-    ].join('\n');
   }
 
   function showMessage(text) {
@@ -601,19 +590,43 @@
   }
 
   document.getElementById('close-order').addEventListener('click', () => orderDialog.close());
-  shareOrderButton.addEventListener('click', async () => {
-    if (!orderFile) return;
-    if (navigator.canShare?.({ files: [orderFile] })) {
-      try {
-        await navigator.share({ files: [orderFile], title: `${STORE_NAME} order`, text: pendingOrderText });
-        shareNote.textContent = 'Share sheet closed. Your order is confirmed only after the store replies.';
-      } catch (error) {
-        if (error.name !== 'AbortError') shareNote.textContent = 'Sharing is unavailable. Save the image, then attach it in WhatsApp.';
-      }
-    } else {
-      window.location.assign(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(pendingOrderText)}`);
-    }
+
+  shareOrderButton.addEventListener('click', () => {
+    if (!savedOrder) return;
+    const message = [
+      `Hi ${STORE_NAME}, I'd like to order this custom pair.`,
+      `Order: ${savedOrder.id}`,
+      `Order image (link valid for 7 days):`,
+      savedOrder.image_url,
+    ].join('\n');
+    // Navigate directly from the click, without asynchronous popup blocking.
+    window.location.assign(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`);
   });
+
+  async function saveOrder(phone, file) {
+    const config = window.SHUES_CMS_CONFIG;
+    if (!config?.supabaseUrl || !config?.supabaseAnonKey) throw new Error('Ordering is not configured. Please contact the shop.');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state.product.id || '')) throw new Error('This is a preview product. Open a live product from the shop to place an order.');
+    const details = {
+      product_id: state.product.id, phone, colour: state.colour?.name || 'Original',
+      size: state.size, heel: state.heel, expected_price: Number(state.product.price),
+    };
+    const fingerprint = JSON.stringify(details);
+    if (fingerprint !== orderFingerprint) {
+      orderRequestKey = crypto.randomUUID();
+      orderFingerprint = fingerprint;
+    }
+    const body = new FormData();
+    body.append('order', JSON.stringify({ ...details, request_key: orderRequestKey }));
+    body.append('image', file);
+    const response = await fetch(`${config.supabaseUrl.replace(/\/$/, '')}/functions/v1/create-order`, {
+      method: 'POST', headers: { apikey: config.supabaseAnonKey }, body,
+    });
+    let result;
+    try { result = await response.json(); } catch { throw new Error('The order service is unavailable. Please try again later.'); }
+    if (!response.ok || !result.id || !result.image_url) throw new Error(result.error || 'Could not save your order. Please try again.');
+    return result;
+  }
 
   const sizeStepper = setupStepper(els.sizeInput, els.sizeNote, (value) => {
     state.size = value;
@@ -653,27 +666,29 @@
     els.phone.removeAttribute('aria-invalid');
     if (!state.product || els.orderButton.disabled) return;
     clearMessage();
+    savedOrder = null;
     els.orderButton.disabled = true;
     els.orderButton.setAttribute('aria-busy', 'true');
+    const controls = [...document.querySelectorAll('input, .stepper button, #colour-list button')]
+      .filter((control) => !control.disabled);
+    controls.forEach((control) => { control.disabled = true; });
     try {
       const result = await createOrderCard(phone);
       orderFile = result.file;
-      pendingOrderText = orderSummary(phone);
+      savedOrder = await saveOrder(phone, orderFile);
       if (orderImageURL) URL.revokeObjectURL(orderImageURL);
       orderImageURL = URL.createObjectURL(orderFile);
       document.getElementById('order-card-image').src = orderImageURL;
       document.getElementById('save-order').href = orderImageURL;
-      const canShare = navigator.canShare?.({ files: [orderFile] });
-      shareOrderButton.textContent = canShare ? 'Share order image ↗' : 'Open WhatsApp ↗';
-      shareNote.textContent = canShare
-        ? `Choose WhatsApp, then send to the store: +${WHATSAPP_NUMBER}. Courier Rs. 250 is included.`
-        : 'Save the image first, then open WhatsApp and attach it to the chat. Courier Rs. 250 is included.';
+      shareOrderButton.textContent = 'Continue to WhatsApp ↗';
+      shareNote.textContent = `Order ${savedOrder.id.slice(0, 8)} saved. Continue to WhatsApp and tap Send to send your order image link to the shop. The link expires in 7 days. Your order is confirmed only after the shop replies.`;
       if (!result.hasImage) shareNote.textContent += ' Product photo could not load; your order details are included.';
       orderDialog.showModal();
     } catch (error) {
       console.warn('Order card could not be created:', error);
-      showMessage('Could not create your order image. Please try again.');
+      showMessage(error.message || 'Could not save your order. Please try again.');
     } finally {
+      controls.forEach((control) => { control.disabled = false; });
       els.orderButton.disabled = false;
       els.orderButton.removeAttribute('aria-busy');
     }
