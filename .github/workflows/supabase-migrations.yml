@@ -51,3 +51,9 @@ jobs:
 
       - name: Deploy order submission function
         run: supabase functions deploy create-order --remote="$SUPABASE_PROJECT_ID" --yes
+
+      - name: Deploy short order image links
+        run: supabase functions deploy order-image --remote="$SUPABASE_PROJECT_ID" --yes
+
+      - name: Deploy admin order deletion
+        run: supabase functions deploy delete-order --remote="$SUPABASE_PROJECT_ID" --yes

@@ -12,6 +12,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../Backend/admin.css" />
+    <link rel="stylesheet" href="../Backend/dashboard.css" />
   </head>
   <body>
     <header class="admin-header">
@@ -39,22 +40,38 @@
       </section>
 
       <section id="cms-panel" hidden>
-        <div class="page-heading">
+        <div class="page-heading" id="cms-page-heading">
           <div>
             <p class="eyebrow">Your store</p>
-            <h1 id="panel-title">Products</h1>
-            <p class="page-description" id="panel-description">Manage your women's heels and sandals. Published products appear in your online shop.</p>
+            <h1 id="panel-title">Dashboard</h1>
+            <p class="page-description" id="panel-description">Welcome back. Here is what is happening in your store.</p>
           </div>
           <span id="panel-count" class="count-pill">0 products</span>
         </div>
 
-        <nav class="cms-tabs" aria-label="CMS sections">
-          <button class="cms-tab is-active" type="button" data-tab="products" aria-pressed="true">Products</button>
-          <button class="cms-tab" type="button" data-tab="homepage" aria-pressed="false">Homepage</button>
-          <button class="cms-tab" type="button" data-tab="orders" aria-pressed="false">Orders</button>
-        </nav>
+        <aside class="admin-sidebar">
+          <p class="sidebar-label">STORE MANAGEMENT</p>
+          <nav class="cms-tabs" aria-label="CMS sections">
+            <button class="cms-tab is-active" type="button" data-tab="dashboard" aria-pressed="true"><span aria-hidden="true">▦</span> Dashboard</button>
+            <button class="cms-tab" type="button" data-tab="orders" aria-pressed="false"><span aria-hidden="true">▤</span> Orders <span id="new-orders-count" class="sidebar-order-count" aria-label="New orders" aria-live="polite">—</span></button>
+            <button class="cms-tab" type="button" data-tab="products" aria-pressed="false"><span aria-hidden="true">▣</span> Products</button>
+            <button class="cms-tab" type="button" data-tab="homepage" aria-pressed="false"><span aria-hidden="true">◈</span> Homepage</button>
+          </nav>
+          <div class="sidebar-footer"><strong>VENU Shoues</strong><span>Your store, at a glance.</span><a href="../index.html">Visit storefront ↗</a></div>
+        </aside>
 
-        <div id="products-tab" class="cms-layout">
+        <div id="dashboard-tab">
+          <div class="dashboard-welcome"><div><h2>Your store, under control.</h2><p>Review new orders, keep production moving and get every pair ready to go.</p></div><button class="button button-primary" type="button" data-goto="orders">Manage orders →</button></div>
+          <p id="dashboard-message" role="status" aria-live="polite"></p>
+          <div class="dashboard-grid">
+            <section class="panel"><div class="section-heading"><h2>At a glance</h2><button id="refresh-dashboard" class="text-button" type="button">Refresh</button></div><div class="dashboard-stats"><div><strong id="dashboard-orders">—</strong><span>Total orders</span></div><div><strong id="dashboard-products">—</strong><span>Products</span></div><div><strong id="dashboard-cards">—</strong><span>Homepage cards</span></div><div><strong id="dashboard-value">—</strong><span>Non-cancelled order value · not payments received</span></div></div></section>
+            <section class="panel"><div class="section-heading"><h2>Order pipeline</h2></div><div id="dashboard-pipeline" class="dashboard-pipeline"></div></section>
+            <section class="panel dashboard-recent"><div class="section-heading"><h2>Recent orders</h2><button class="text-button" type="button" data-goto="orders">View all orders →</button></div><div id="dashboard-recent-orders" class="dashboard-recent-list"></div></section>
+            <section class="panel"><div class="section-heading"><h2>Store checklist</h2></div><ul class="dashboard-checklist"><li><strong>Confirm new orders</strong><span>Check the customer's WhatsApp message and payment before starting work.</span></li><li><strong>Keep statuses up to date</strong><span>Confirmed → Processing → Shipping → Completed.</span></li><li><strong>Need to remove an order?</strong><span>Delete removes its details and image. Use Cancelled when you want to keep a record.</span></li></ul><button class="text-button" type="button" data-goto="products">Manage products →</button></section>
+          </div>
+        </div>
+
+        <div id="products-tab" class="cms-layout" hidden>
           <section class="panel editor-panel">
             <div class="section-heading">
               <h2 id="form-title">Add a product</h2>
@@ -127,17 +144,17 @@
         </div>
 
         <div id="orders-tab" hidden>
-          <section class="panel">
-            <div class="section-heading"><h2>Customer orders</h2><button id="refresh-orders" class="text-button" type="button">Refresh</button></div>
-            <p class="panel-description">Orders are saved before WhatsApp opens. “New” does not mean the customer sent the WhatsApp message or paid. Confirm with the customer before making their pair.</p>
-            <form id="order-filters" class="order-filters">
-              <label>Status<select id="order-status-filter"><option value="">All statuses</option><option value="new">New</option><option value="confirmed">Confirmed</option><option value="making">Making</option><option value="shipped">Shipped</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
-              <label>Customer phone<input id="order-search" type="search" placeholder="0771234567" maxlength="20" /></label>
-              <button class="button button-outline" type="submit">Filter</button>
-            </form>
+          <section class="panel orders-panel" aria-label="Orders">
+            <div class="order-tabs-toolbar">
+              <div id="order-status-tabs" class="order-status-tabs" role="tablist" aria-label="Order status"></div>
+              <button id="refresh-orders" class="text-button" type="button">Refresh</button>
+            </div>
+            <div id="order-status-panel" role="tabpanel" aria-labelledby="order-tab-new">
             <p id="orders-message" role="status" aria-live="polite"></p>
+            <div id="order-cleanup-notice" class="order-cleanup-notice" hidden><p id="order-cleanup-message" role="status"></p><button id="retry-order-cleanup" type="button" class="button button-outline">Retry image cleanup</button></div>
             <div id="order-list" class="order-list"></div>
             <div class="order-pagination"><button id="orders-prev" class="text-button" type="button">← Previous</button><span id="orders-page"></span><button id="orders-next" class="text-button" type="button">Next →</button></div>
+            </div>
           </section>
         </div>
 

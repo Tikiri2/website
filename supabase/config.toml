@@ -2,3 +2,9 @@ project_id = "shues-website"
 
 [functions.create-order]
 verify_jwt = false
+
+[functions.order-image]
+verify_jwt = false
+
+[functions.delete-order]
+verify_jwt = false

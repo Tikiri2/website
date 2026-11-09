@@ -1,21 +1,31 @@
 // All reads and updates are protected by the CMS-admin RLS policies.
-window.createOrdersManager = (client, setStatus, onCount) => {
+window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {}, onNewCount = () => {}) => {
   const list = document.getElementById('order-list');
   const message = document.getElementById('orders-message');
-  const filter = document.getElementById('order-status-filter');
-  const search = document.getElementById('order-search');
+  const tabs = document.getElementById('order-status-tabs');
+  const statusPanel = document.getElementById('order-status-panel');
   const previous = document.getElementById('orders-prev');
   const next = document.getElementById('orders-next');
   const pageLabel = document.getElementById('orders-page');
   const preview = document.getElementById('cms-order-preview');
   const previewImage = document.getElementById('cms-order-image');
   const previewMessage = document.getElementById('cms-order-preview-message');
-  const statuses = ['new', 'confirmed', 'making', 'shipped', 'completed', 'cancelled'];
+  const statuses = ['new', 'confirmed', 'processing', 'shipping', 'completed', 'cancelled'];
+  const canonicalStatus = (value) => ({ making: 'processing', shipped: 'shipping' }[value] || value);
+  const statusLabel = (value) => {
+    const canonical = canonicalStatus(value);
+    return canonical[0].toUpperCase() + canonical.slice(1);
+  };
   const pageSize = 25;
   let page = 0;
   let generation = 0;
   let previewGeneration = 0;
   let total = 0;
+  let overviewGeneration = 0;
+  let activeStatus = 'new';
+  const statusTabs = new Map();
+  let overviewAvailable = true;
+  let sessionGeneration = 0;
   const money = (value) => `Rs. ${Number(value).toLocaleString('en-LK')}`;
   const node = (tag, text, className) => {
     const element = document.createElement(tag);
@@ -24,11 +34,120 @@ window.createOrdersManager = (client, setStatus, onCount) => {
     return element;
   };
 
+  function updateStatusTabs() {
+    statusTabs.forEach(({ button }, value) => {
+      const active = value === activeStatus;
+      button.setAttribute('aria-selected', String(active));
+      button.className = `order-status-tab${active ? ' is-active' : ''}`;
+      button.tabIndex = active ? 0 : -1;
+    });
+    statusPanel.setAttribute('aria-labelledby', `order-tab-${activeStatus}`);
+  }
+
+  function selectStatus(value, refresh = true) {
+    if (!statuses.includes(value)) return;
+    activeStatus = value;
+    page = 0;
+    updateStatusTabs();
+    if (refresh) return load();
+  }
+
+  statuses.forEach((value, index) => {
+    const button = node('button');
+    const count = node('span', '—', 'order-tab-count');
+    button.id = `order-tab-${value}`;
+    button.type = 'button';
+    button.setAttribute('role', 'tab');
+    button.setAttribute('aria-controls', 'order-status-panel');
+    button.append(node('span', statusLabel(value)), count);
+    button.addEventListener('click', () => selectStatus(value));
+    button.addEventListener('keydown', (event) => {
+      const target = event.key === 'ArrowRight' ? (index + 1) % statuses.length
+        : event.key === 'ArrowLeft' ? (index + statuses.length - 1) % statuses.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? statuses.length - 1 : -1;
+      if (target < 0) return;
+      event.preventDefault();
+      statusTabs.get(statuses[target]).button.focus();
+      selectStatus(statuses[target]);
+    });
+    tabs.append(button);
+    statusTabs.set(value, { button, count });
+  });
+  updateStatusTabs();
+
+  function withStatus(query, value) {
+    const legacy = { processing: 'making', shipping: 'shipped' }[value];
+    return legacy ? query.in('status', [value, legacy]) : query.eq('status', value);
+  }
+
+  async function getOrderOverview() {
+    if (overviewAvailable) {
+      const result = await client.rpc('cms_order_overview');
+      if (!result.error) return result.data;
+      if (!['PGRST202', '42883'].includes(result.error.code)) throw result.error;
+      overviewAvailable = false;
+    }
+    // Older deployments may not have the aggregate RPC yet. Exact HEAD counts
+    // still respect the same admin RLS, without downloading customer records.
+    const counts = await Promise.all(statuses.map(async (value) => {
+      const { count, error } = await withStatus(client.from('orders')
+        .select('id', { count: 'exact', head: true }), value);
+      if (error) throw error;
+      if (count === null || count === undefined) throw new Error('Order counts are unavailable.');
+      return [value, count];
+    }));
+    const data = Object.fromEntries(counts);
+    return { ...data, total: counts.reduce((sum, [, count]) => sum + Number(count), 0), order_value: null };
+  }
+
+  async function loadTabCounts(token) {
+    try {
+      const data = await getOrderOverview();
+      if (token !== generation) return;
+      statusTabs.forEach(({ count }, value) => { count.textContent = String(data[value] || 0); });
+      onNewCount(data.new || 0);
+    } catch {
+      if (token === generation) {
+        statusTabs.forEach(({ count }) => { count.textContent = '—'; });
+        onNewCount(null);
+      }
+    }
+  }
+
+  function showCleanup(count) {
+    document.getElementById('order-cleanup-notice').hidden = !count;
+    document.getElementById('order-cleanup-message').textContent = count
+      ? `${count} deleted order image(s) still need storage cleanup. Deleted orders are no longer accessible through their website links; existing direct image URLs may work until cleanup or expiry. Retry cleanup below.` : '';
+  }
+
+  async function adminAction(body) {
+    const { data, error } = await client.functions.invoke('delete-order', { body });
+    if (error) {
+      let detail;
+      try { detail = await error.context?.json(); } catch { /* Keep the original error. */ }
+      throw new Error(detail?.error || error.message);
+    }
+    if (data?.error) throw new Error(data.error);
+    return data;
+  }
+
+  async function loadCleanup(token) {
+    const { count, error } = await client.from('order_image_cleanup').select('id', { count: 'exact', head: true });
+    if (token !== generation) return;
+    if (error) {
+      document.getElementById('order-cleanup-notice').hidden = false;
+      document.getElementById('order-cleanup-message').textContent = 'Could not check image cleanup. Apply the order-management migration if this is a new setup.';
+      return;
+    }
+    showCleanup(count || 0);
+  }
+
   function renderOrder(order) {
     const card = node('details', undefined, 'order-record');
     const summary = node('summary');
+    const badge = node('span', statusLabel(order.status), `order-status status-${canonicalStatus(order.status)}`);
     summary.append(node('strong', `${order.product_name} · ${money(order.total)}`),
-      node('span', `${order.status.toUpperCase()} · ${order.customer_phone} · ${new Date(order.created_at).toLocaleString()}`));
+      node('span', `#${order.id.slice(0, 8)} · ${order.customer_phone} · ${new Date(order.created_at).toLocaleString()}`, 'order-meta'), badge);
     card.append(summary);
     const body = node('div', undefined, 'order-record-body');
     body.append(node('p', `Order reference: ${order.id}`),
@@ -60,19 +179,21 @@ window.createOrdersManager = (client, setStatus, onCount) => {
         if (token === previewGeneration) previewMessage.textContent = `Could not load image: ${error.message}`;
       }
     });
-    actions.append(view, contact);
+    const remove = node('button', order.status === 'completed' ? 'Delete completed order' : 'Delete order', 'text-button delete-button');
+    remove.type = 'button';
+    actions.append(view, contact, remove);
     body.append(actions);
     if (!order.image_path) body.append(node('p', 'Image upload incomplete. The order details are saved; the customer can retry the same submission.'));
     const form = node('form', undefined, 'stack');
-    const statusLabel = node('label', 'Order status');
+    const statusField = node('label', 'Order status');
     const status = node('select');
     statuses.forEach((value) => {
       const option = node('option', value[0].toUpperCase() + value.slice(1));
       option.value = value;
       status.append(option);
     });
-    status.value = order.status;
-    statusLabel.append(status);
+    status.value = canonicalStatus(order.status);
+    statusField.append(status);
     const notesLabel = node('label', 'Internal notes (CMS only)');
     const notes = node('textarea');
     notes.value = order.admin_notes;
@@ -83,26 +204,71 @@ window.createOrdersManager = (client, setStatus, onCount) => {
     save.type = 'submit';
     const feedback = node('p');
     feedback.setAttribute('role', 'status');
-    form.append(statusLabel, notesLabel, save, feedback);
+    form.append(statusField, notesLabel, save, feedback);
+    let busy = false;
+    const setBusy = (value) => {
+      busy = value;
+      save.disabled = value; remove.disabled = value; status.disabled = value; notes.disabled = value;
+    };
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      save.disabled = true;
+      if (busy) return;
+      const submittedStatus = status.value;
+      const submittedNotes = notes.value;
+      setBusy(true);
       feedback.textContent = 'Saving…';
       const token = generation;
+      const sessionToken = sessionGeneration;
       try {
-        const { data, error } = await client.from('orders').update({ status: status.value, admin_notes: notes.value })
-          .eq('id', order.id).eq('updated_at', order.updated_at).select('updated_at');
-        if (token !== generation) return;
+        const write = (storedStatus) => client.from('orders').update({ status: storedStatus, admin_notes: submittedNotes })
+          .eq('id', order.id).eq('updated_at', order.updated_at).select('id, status, updated_at');
+        let result = await write(submittedStatus);
+        if (sessionToken !== sessionGeneration) return;
+        const legacyStatus = { processing: 'making', shipping: 'shipped' }[submittedStatus];
+        if (legacyStatus && result.error?.code === '23514' && result.error.message?.includes('orders_status_check')) {
+          // Compatibility with the original schema. The rejected first write is
+          // atomic; keep the timestamp guard on the retry to protect newer edits.
+          result = await write(legacyStatus);
+        }
+        const { data, error } = result;
+        if (sessionToken !== sessionGeneration) return;
         if (error) throw error;
-        if (!data.length) throw new Error('This order changed in another session. Refresh before saving.');
+        if (!data?.length) throw new Error('This order changed in another session. Refresh before saving.');
+        if (canonicalStatus(data[0].status) !== submittedStatus) throw new Error('The server did not confirm the selected status. Refresh and check this order before retrying.');
         order.updated_at = data[0].updated_at;
-        order.status = status.value;
-        summary.lastChild.textContent = `${order.status.toUpperCase()} · ${order.customer_phone} · ${new Date(order.created_at).toLocaleString()}`;
+        order.status = canonicalStatus(data[0].status);
+        badge.textContent = statusLabel(order.status);
+        badge.className = `order-status status-${order.status}`;
         feedback.textContent = 'Order saved.';
+        // A tab switch while the PATCH is in flight must not hide a successful
+        // save or leave a previously loaded Completed tab showing stale data.
+        if (token === generation && order.status !== activeStatus) await selectStatus(order.status);
+        else await load();
+        if (sessionToken === sessionGeneration) setStatus(`Order saved as ${statusLabel(order.status)}.`);
       } catch (error) {
-        if (token === generation) feedback.textContent = `Could not save: ${error.message}`;
+        if (sessionToken !== sessionGeneration) return;
+        const text = `Could not save: ${error.message}`;
+        if (token === generation) feedback.textContent = text;
+        setStatus(text, true);
       } finally {
-        save.disabled = false;
+        setBusy(false);
+      }
+    });
+    remove.addEventListener('click', async () => {
+      if (busy || !window.confirm(`Permanently delete order ${order.id.slice(0, 8)} for ${order.customer_phone}?\n\nIts details, notes and image will be removed. This cannot be undone. To keep a record, use Cancelled instead.`)) return;
+      const token = generation;
+      setBusy(true);
+      feedback.textContent = 'Deleting order and image…';
+      try {
+        const result = await adminAction({ action: 'delete', id: order.id, updated_at: order.updated_at });
+        if (token !== generation) return;
+        await load();
+        showCleanup(result.cleanup_pending || 0);
+        setStatus(result.cleanup_pending ? 'Order deleted. Image cleanup is pending; retry it in the Orders panel.' : 'Order and image deleted.');
+      } catch (error) {
+        if (token === generation) feedback.textContent = `Could not delete: ${error.message}`;
+      } finally {
+        setBusy(false);
       }
     });
     body.append(form);
@@ -112,6 +278,14 @@ window.createOrdersManager = (client, setStatus, onCount) => {
 
   async function load() {
     const token = ++generation;
+    statusTabs.forEach(({ count }) => { count.textContent = '…'; });
+    loadTabCounts(token);
+    loadCleanup(token).catch(() => {
+      if (token === generation) {
+        document.getElementById('order-cleanup-notice').hidden = false;
+        document.getElementById('order-cleanup-message').textContent = 'Could not check pending image cleanup. Please refresh.';
+      }
+    });
     message.textContent = 'Loading orders…';
     list.replaceChildren();
     previous.disabled = true;
@@ -119,10 +293,7 @@ window.createOrdersManager = (client, setStatus, onCount) => {
     try {
       let query = client.from('orders').select('id, product_name, colour, shoe_size, heel_height, customer_phone, product_price, courier_fee, total, image_path, status, admin_notes, created_at, updated_at', { count: 'exact' })
         .order('created_at', { ascending: false }).order('id', { ascending: false });
-      if (filter.value) query = query.eq('status', filter.value);
-      const digits = search.value.replace(/\D/g, '');
-      if (search.value.trim() && !digits) throw new Error('Enter a customer phone number to search.');
-      if (digits) query = query.ilike('customer_phone', `%${digits}%`);
+      query = withStatus(query, activeStatus);
       const { data, count, error } = await query.range(page * pageSize, (page + 1) * pageSize - 1);
       if (token !== generation) return;
       if (error) throw error;
@@ -133,7 +304,7 @@ window.createOrdersManager = (client, setStatus, onCount) => {
         return load();
       }
       list.replaceChildren(...data.map(renderOrder));
-      message.textContent = data.length ? `${total} matching order${total === 1 ? '' : 's'}.` : 'No orders found.';
+      message.textContent = data.length ? '' : `No ${statusLabel(activeStatus).toLowerCase()} orders.`;
       pageLabel.textContent = `Page ${page + 1} of ${Math.max(1, Math.ceil(total / pageSize))}`;
       previous.disabled = page === 0;
       next.disabled = (page + 1) * pageSize >= total;
@@ -145,8 +316,61 @@ window.createOrdersManager = (client, setStatus, onCount) => {
       setStatus('Could not load orders. See the Orders panel for details.', true);
     }
   }
-  document.getElementById('order-filters').addEventListener('submit', (event) => {
-    event.preventDefault(); page = 0; load();
+  async function loadDashboard() {
+    const token = ++overviewGeneration;
+    const dashboardMessage = document.getElementById('dashboard-message');
+    dashboardMessage.textContent = 'Loading your store overview…';
+    document.getElementById('dashboard-orders').textContent = '—';
+    document.getElementById('dashboard-value').textContent = '—';
+    document.getElementById('dashboard-pipeline').replaceChildren();
+    document.getElementById('dashboard-recent-orders').replaceChildren();
+    try {
+      const [overview, recent] = await Promise.all([
+        getOrderOverview(),
+        client.from('orders').select('id, product_name, status, total, customer_phone, created_at')
+          .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(5),
+      ]);
+      if (token !== overviewGeneration) return;
+      if (recent.error) throw recent.error;
+      document.getElementById('dashboard-orders').textContent = String(overview.total);
+      document.getElementById('dashboard-value').textContent = overview.order_value === null ? '—' : money(overview.order_value);
+      onNewCount(overview.new || 0);
+      document.getElementById('dashboard-pipeline').replaceChildren(...statuses.map((value) => {
+        const button = node('button', undefined, 'pipeline-button');
+        button.type = 'button';
+        button.append(node('strong', String(overview[value] || 0)), node('span', statusLabel(value)));
+        button.addEventListener('click', () => { selectStatus(value, false); openOrders(); });
+        return button;
+      }));
+      const rows = (recent.data || []).map((order) => {
+        const row = node('div', undefined, 'recent-order');
+        row.append(node('strong', order.product_name), node('span', statusLabel(order.status), `order-status status-${canonicalStatus(order.status)}`),
+          node('small', `#${order.id.slice(0, 8)} · ${order.customer_phone}`), node('small', money(order.total)));
+        return row;
+      });
+      document.getElementById('dashboard-recent-orders').replaceChildren(...(rows.length ? rows : [node('p', 'No orders yet. New submissions will appear here.')]));
+      dashboardMessage.textContent = '';
+    } catch (error) {
+      if (token === overviewGeneration) {
+        onNewCount(null);
+        dashboardMessage.textContent = `Could not load the dashboard: ${error.message}. Apply the order-management migration if needed.`;
+      }
+    }
+  }
+  document.getElementById('refresh-dashboard').addEventListener('click', loadDashboard);
+  document.getElementById('retry-order-cleanup').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const token = generation;
+    button.disabled = true;
+    try {
+      const result = await adminAction({ action: 'cleanup' });
+      if (token === generation) {
+        showCleanup(result.cleanup_pending || 0);
+        setStatus(result.cleanup_pending ? 'Some images still need cleanup. Please retry later.' : 'Deleted order images cleaned up.');
+      }
+    } catch (error) {
+      if (token === generation) document.getElementById('order-cleanup-message').textContent = `Cleanup failed: ${error.message}`;
+    } finally { button.disabled = false; }
   });
   document.getElementById('refresh-orders').addEventListener('click', () => load());
   previous.addEventListener('click', () => { if (page > 0) { page--; load(); } });
@@ -156,15 +380,28 @@ window.createOrdersManager = (client, setStatus, onCount) => {
   previewImage.addEventListener('error', () => { previewMessage.textContent = 'Image could not load. Close this preview and try again.'; });
   return {
     load,
+    selectStatus,
+    loadDashboard,
     clear() {
+      sessionGeneration++;
       generation++;
+      overviewGeneration++;
       previewGeneration++;
       list.replaceChildren();
       preview.close();
       previewImage.removeAttribute('src');
       message.textContent = '';
+      document.getElementById('dashboard-pipeline').replaceChildren();
+      document.getElementById('dashboard-recent-orders').replaceChildren();
+      document.getElementById('dashboard-message').textContent = '';
+      document.getElementById('dashboard-orders').textContent = '—';
+      document.getElementById('dashboard-value').textContent = '—';
+      showCleanup(0);
+      selectStatus('new', false);
+      statusTabs.forEach(({ count }) => { count.textContent = '—'; });
       page = 0;
       onCount(0);
+      onNewCount(null);
     },
   };
 };

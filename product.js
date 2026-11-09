@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   'use strict';
 
   const WHATSAPP_NUMBER = '94775356524';
@@ -73,7 +73,7 @@
       description: 'A touch of gold for your evening plans',
       price: 12900,
       image_url: 'Backend/assets/heel-golden-hour.jpg',
-      image_alt: 'Gold strappy women’s heel sandal',
+      image_alt: 'Gold strappy womenâ€™s heel sandal',
       colours: [
         { name: 'Rose', hex: '#c93728' },
         { name: 'Gold', hex: '#c9a227' },
@@ -88,7 +88,7 @@
       description: 'A playful pop of red for going out',
       price: 10900,
       image_url: 'Backend/assets/heel-red-ribbon.jpg',
-      image_alt: 'Red women’s heels with ribbon-style straps',
+      image_alt: 'Red womenâ€™s heels with ribbon-style straps',
       colours: [
         { name: 'Ruby', hex: '#b3202a' },
         { name: 'Ivory', hex: '#eee9dc' },
@@ -103,7 +103,7 @@
       description: 'A little shimmer, made for celebrations',
       price: 11900,
       image_url: 'Backend/assets/heel-gold-arch.jpg',
-      image_alt: 'Gold open-toe women’s occasion heels',
+      image_alt: 'Gold open-toe womenâ€™s occasion heels',
       colours: [
         { name: 'Gold', hex: '#c9a227' },
         { name: 'Rose', hex: '#c93728' },
@@ -118,7 +118,7 @@
       description: 'Easy, pretty and ready for everyday',
       price: 5900,
       image_url: 'Backend/assets/sandal-black-flower.jpg',
-      image_alt: 'Printed women’s flat sandals with flower detail',
+      image_alt: 'Printed womenâ€™s flat sandals with flower detail',
       colours: [
         { name: 'Maroon', hex: '#7d2b34' },
         { name: 'Cream', hex: '#eee9dc' },
@@ -133,7 +133,7 @@
       description: 'Your comfy favourite for sunny days',
       price: 6900,
       image_url: 'Backend/assets/sandal-orange-strap.jpg',
-      image_alt: 'Orange and cream women’s strap sandals',
+      image_alt: 'Orange and cream womenâ€™s strap sandals',
       colours: [
         { name: 'Sand', hex: '#d9b382' },
         { name: 'Olive', hex: '#7d8c5c' },
@@ -148,7 +148,7 @@
       description: 'Pretty little details for everyday wear',
       price: 7900,
       image_url: 'Backend/assets/sandal-brown-charm.jpg',
-      image_alt: 'Women’s sandals with decorative charm straps',
+      image_alt: 'Womenâ€™s sandals with decorative charm straps',
       colours: [
         { name: 'Blue', hex: '#8096ae' },
         { name: 'Cream', hex: '#eee9dc' },
@@ -238,7 +238,6 @@
       .sort((a, b) => a - b);
     return sizes.length ? sizes : [36, 37, 38, 39, 40];
   }
-
   async function fetchProduct() {
     const config = window.SHUES_CMS_CONFIG;
     if (!config?.supabaseUrl || !config?.supabaseAnonKey) return null;
@@ -258,7 +257,6 @@
     const rows = await response.json();
     return Array.isArray(rows) && rows.length ? rows[0] : null;
   }
-
   function fallbackProduct() {
     let stored = null;
     try {
@@ -293,7 +291,7 @@
 
   function updateSummary() {
     if (!state.product) return;
-    els.summary.textContent = `${state.colour?.name || 'Colour'} · EU ${state.size} · ${state.heel} cm heel`;
+    els.summary.textContent = `${state.colour?.name || 'Colour'} Â· EU ${state.size} Â· ${state.heel} cm heel`;
   }
 
   function selectColour(index) {
@@ -366,7 +364,7 @@
     els.preview.alt = product.image_alt || product.name || 'Selected shoe';
     els.preview.style.filter = 'none';
 
-    document.title = `Customize ${product.name || 'your pair'} — ${STORE_NAME}`;
+    document.title = `Customize ${product.name || 'your pair'} â€” ${STORE_NAME}`;
     renderColours();
   }
 
@@ -567,7 +565,7 @@
       ctx.fillText(String(value), 840, y, 560);
       ctx.textAlign = 'left';
     };
-    row('Colour', state.colour?.name || '—', 730);
+    row('Colour', state.colour?.name || 'â€”', 730);
     row('Shoe size', `EU ${state.size}`, 780);
     row('Heel height', `${state.heel} cm`, 830);
     ctx.fillStyle = '#e6d8df';
@@ -581,7 +579,7 @@
     row('Customer phone', phone, 1143);
     ctx.fillStyle = '#897a83';
     ctx.font = '18px sans-serif';
-    ctx.fillText('Order enquiry · Confirm availability & delivery on WhatsApp', 60, 1212);
+    ctx.fillText('Order enquiry Â· Confirm availability & delivery on WhatsApp', 60, 1212);
     ctx.fillText(`WhatsApp: +${WHATSAPP_NUMBER}`, 60, 1245);
     const blob = await new Promise((resolve, reject) => {
       canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Image export failed')), 'image/png');
@@ -597,7 +595,7 @@
       `Hi ${STORE_NAME}, I'd like to order this custom pair.`,
       `Order: ${savedOrder.id}`,
       `Order image (link valid for 7 days):`,
-      savedOrder.image_url,
+      savedOrder.share_url || savedOrder.image_url,
     ].join('\n');
     // Navigate directly from the click, without asynchronous popup blocking.
     window.location.assign(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`);
@@ -625,6 +623,11 @@
     let result;
     try { result = await response.json(); } catch { throw new Error('The order service is unavailable. Please try again later.'); }
     if (!response.ok || !result.id || !result.image_url) throw new Error(result.error || 'Could not save your order. Please try again.');
+    if (/^[a-f0-9]{32}$/.test(result.share_token || '')) {
+      const link = new URL('order.html', window.location.href);
+      link.hash = result.share_token;
+      result.share_url = link.href;
+    }
     return result;
   }
 
@@ -680,7 +683,7 @@
       orderImageURL = URL.createObjectURL(orderFile);
       document.getElementById('order-card-image').src = orderImageURL;
       document.getElementById('save-order').href = orderImageURL;
-      shareOrderButton.textContent = 'Continue to WhatsApp ↗';
+      shareOrderButton.textContent = 'Continue to WhatsApp â†—';
       shareNote.textContent = `Order ${savedOrder.id.slice(0, 8)} saved. Continue to WhatsApp and tap Send to send your order image link to the shop. The link expires in 7 days. Your order is confirmed only after the shop replies.`;
       if (!result.hasImage) shareNote.textContent += ' Product photo could not load; your order details are included.';
       orderDialog.showModal();
@@ -704,3 +707,9 @@
     renderProduct(product || fallbackProduct());
   })();
 })();
+
+
+
+
+
+

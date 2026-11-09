@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let imageObjectUrls = [];
   let productTotal = 0;
   let cardTotal = 0;
-  let activeTab = 'products';
+  let activeTab = 'dashboard';
   let activeSubtab = 'images';
   let statusTimer;
   const IMAGE_BUCKET = 'product-images';
@@ -146,6 +146,9 @@ document.addEventListener('DOMContentLoaded', () => {
   ];
 
   function updatePanelCount() {
+    document.getElementById('dashboard-products').textContent = String(productTotal);
+    document.getElementById('dashboard-cards').textContent = String(cardTotal);
+    panelCount.hidden = activeTab === 'dashboard';
     const count = activeTab === 'orders' ? orderTotal : activeTab === 'products' ? productTotal : cardTotal;
     const label = activeTab === 'orders' ? 'order' : activeTab === 'products' ? 'product' : 'card';
     panelCount.textContent = `${count} ${label}${count === 1 ? '' : 's'}`;
@@ -161,14 +164,17 @@ document.addEventListener('DOMContentLoaded', () => {
     productsTab.hidden = tab !== 'products';
     homepageTab.hidden = tab !== 'homepage';
     document.getElementById('orders-tab').hidden = tab !== 'orders';
-    panelTitle.textContent = tab === 'orders' ? 'Orders' : tab === 'products' ? 'Products' : 'Homepage';
+    document.getElementById('dashboard-tab').hidden = tab !== 'dashboard';
+    document.getElementById('cms-page-heading').hidden = tab === 'orders';
+    panelTitle.textContent = tab === 'dashboard' ? 'Dashboard' : tab === 'orders' ? 'Orders' : tab === 'products' ? 'Products' : 'Homepage';
     panelDescription.textContent =
-      tab === 'products'
+      tab === 'dashboard' ? 'Welcome back. Here is what is happening in your store.' : tab === 'products'
         ? "Manage your women's heels and sandals. Published products appear in your online shop."
         : tab === 'orders' ? 'Review order images, contact customers and manage fulfilment.'
         : 'Change the images, cards and words on your homepage. Start with the Images tab.';
     updatePanelCount();
     if (tab === 'orders') ordersManager?.load();
+    if (tab === 'dashboard') ordersManager?.loadDashboard();
   }
 
   function setSubTab(tab) {
@@ -730,12 +736,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function showSignedOut() {
     ordersManager?.clear();
+    document.body.classList.remove('is-signed-in');
     loginPanel.hidden = false;
     cmsPanel.hidden = true;
     signOutButton.hidden = true;
   }
 
   function showSignedIn() {
+    document.body.classList.add('is-signed-in');
     loginPanel.hidden = true;
     cmsPanel.hidden = false;
     signOutButton.hidden = false;
@@ -814,7 +822,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     showSignedIn();
-    await Promise.allSettled([loadProducts(), loadContent(), loadCards()]);
+    await Promise.allSettled([loadProducts(), loadContent(), loadCards(), ordersManager.loadDashboard()]);
+    if (activeTab === 'orders') ordersManager.load();
   }
 
   function createProductRow(product) {
@@ -1124,6 +1133,9 @@ document.addEventListener('DOMContentLoaded', () => {
   tabButtons.forEach((button) => {
     button.addEventListener('click', () => setTab(button.dataset.tab));
   });
+  document.querySelectorAll('[data-goto]').forEach((button) => {
+    button.addEventListener('click', () => setTab(button.dataset.goto));
+  });
   subtabButtons.forEach((button) => {
     button.addEventListener('click', () => setSubTab(button.dataset.subtab));
   });
@@ -1143,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   buildContentForm();
   updateCardFieldVisibility();
-  setTab('products');
+  setTab('dashboard');
   setSubTab('images');
 
   if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
@@ -1160,6 +1172,10 @@ document.addEventListener('DOMContentLoaded', () => {
     ordersManager = window.createOrdersManager(client, setStatus, (count) => {
       orderTotal = count;
       updatePanelCount();
+    }, () => setTab('orders'), (count) => {
+      const badge = document.getElementById('new-orders-count');
+      badge.textContent = count === null ? '—' : String(count);
+      badge.setAttribute('aria-label', count === null ? 'New order count unavailable' : `${count} new orders`);
     });
     client.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') showSignedOut();

@@ -44,7 +44,8 @@ function backend(options = {}) {
         async single() {
           if (mode === 'insert') {
             state.inserts++;
-            state.order = { id: orderId, ...payload, image_path: null };
+            state.order = { id: orderId, ...payload, image_path: null,
+              image_share_token: 'a'.repeat(32), image_share_expires_at: '2026-11-16T10:00:00Z' };
           }
           return { data: state.order, error: null };
         },
@@ -93,6 +94,7 @@ test('saves authoritative product pricing and a private expiring image link', as
   assert.equal(response.status, 200);
   const result = await response.json();
   assert.equal(result.id, orderId);
+  assert.equal(result.share_token, 'a'.repeat(32));
   assert.match(result.image_url, /token=signed/);
   assert.equal(result.request_key, undefined);
   assert.equal(state.order.product_price, 12900);

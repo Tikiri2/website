@@ -37,11 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let activeFilter = 'all';
   let toastTimer;
 
-  const heroGallery = document.querySelector('.hero-fashion-gallery');
-  const heroCarouselToggle = document.querySelector('.hero-carousel-toggle');
+  const heroImages = [...document.querySelectorAll('.hero-image')];
   const moodGrid = document.querySelector('[data-cms-cards="mood"]');
   const promiseGrid = document.querySelector('[data-cms-cards="promise"]');
-  let heroCleanup = null;
+  let heroSlideshowCleanup = null;
 
   function getMoodSlidesFromDom() {
     return [...document.querySelectorAll('.category-tile')]
@@ -57,8 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .filter(Boolean);
   }
 
-  // Snapshot the hand-written mood cards before the CMS replaces them, so the
-  // shop and hero carousel always keep five cards even if the database has fewer.
+  // Keep the hand-written mood cards available when the CMS has fewer entries.
   const defaultMoodCards = [...document.querySelectorAll('[data-cms-cards="mood"] .category-tile')]
     .map((tile) => {
       const image = tile.querySelector('img');
@@ -73,123 +71,76 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .filter(Boolean);
 
-  function initHeroCarousel(slides) {
-    if (!heroGallery || !heroCarouselToggle || !slides.length) return;
+  function initHeroSlideshow(slides) {
+    if (heroImages.length !== 2 || !slides.length) return;
 
-    if (heroCleanup) {
-      heroCleanup();
-      heroCleanup = null;
+    if (heroSlideshowCleanup) {
+      heroSlideshowCleanup();
+      heroSlideshowCleanup = null;
     }
 
-    heroGallery.querySelectorAll('[data-hero-slide]').forEach((slide) => slide.remove());
-
-    const visibleSlides = slides.slice(0, 5);
-    const slideElements = visibleSlides.map((slide) => {
-      const figure = document.createElement('figure');
-      figure.className = 'hero-fashion-card';
-      figure.dataset.heroSlide = '';
-
-      const image = document.createElement('img');
-      image.src = slide.image;
-      image.alt = slide.alt || '';
-
-      const caption = document.createElement('figcaption');
-      caption.textContent = slide.label;
-
-      figure.append(image, caption);
-      heroGallery.insertBefore(figure, heroCarouselToggle);
-      return figure;
-    });
-
-    const positionsByCount = {
-      1: ['is-center'],
-      2: ['is-center', 'is-right'],
-      3: ['is-center', 'is-right', 'is-left'],
-      4: ['is-center', 'is-right', 'is-back', 'is-left'],
-      5: ['is-center', 'is-right', 'is-back-right', 'is-back-left', 'is-left'],
-    };
-    const slidePositions = positionsByCount[slideElements.length] || positionsByCount[4];
-    const allPositions = [
-      'is-center',
-      'is-right',
-      'is-back',
-      'is-back-right',
-      'is-back-left',
-      'is-left',
-    ];
-    let activeSlide = 0;
-    let carouselTimer;
-    let isPaused = false;
+    const [firstImage, secondImage] = heroImages;
+    let activeLayer = firstImage.classList.contains('is-visible') ? 0 : 1;
+    let activeSlide = -1;
+    let timer;
     let isHovered = false;
-    let isFocused = false;
-
-    const renderHeroSlides = () => {
-      slideElements.forEach((slide, index) => {
-        allPositions.forEach((position) => slide.classList.remove(position));
-        const position = (index - activeSlide + slideElements.length) % slideElements.length;
-        slide.classList.add(slidePositions[position]);
-      });
-    };
-
-    const updateCarouselToggle = () => {
-      heroCarouselToggle.setAttribute('aria-pressed', String(isPaused));
-      heroCarouselToggle.setAttribute(
-        'aria-label',
-        isPaused ? 'Resume featured heels' : 'Pause featured heels'
-      );
-      heroCarouselToggle.textContent = isPaused ? '▶' : 'Ⅱ';
-    };
-
-    const stopCarousel = () => {
-      window.clearInterval(carouselTimer);
-      carouselTimer = undefined;
-    };
-
-    const startCarousel = () => {
-      stopCarousel();
-      if (reduceMotion || isPaused || isHovered || isFocused || document.hidden) return;
-      carouselTimer = window.setInterval(() => {
-        activeSlide = (activeSlide + 1) % slideElements.length;
-        renderHeroSlides();
-      }, 3600);
-    };
-
+    let isLoading = false;
     const controller = new AbortController();
     const { signal } = controller;
 
-    renderHeroSlides();
-    heroCarouselToggle.hidden = reduceMotion;
-    updateCarouselToggle();
+    const stop = () => {
+      window.clearInterval(timer);
+      timer = undefined;
+    };
 
-    if (!reduceMotion) {
-      heroCarouselToggle.addEventListener('click', () => {
-        isPaused = !isPaused;
-        updateCarouselToggle();
-        startCarousel();
-      }, { signal });
-      heroGallery.addEventListener('mouseenter', () => {
-        isHovered = true;
-        stopCarousel();
-      }, { signal });
-      heroGallery.addEventListener('mouseleave', () => {
-        isHovered = false;
-        startCarousel();
-      }, { signal });
-      heroGallery.addEventListener('focusin', () => {
-        isFocused = true;
-        stopCarousel();
-      }, { signal });
-      heroGallery.addEventListener('focusout', (event) => {
-        if (heroGallery.contains(event.relatedTarget)) return;
-        isFocused = false;
-        startCarousel();
-      }, { signal });
-      document.addEventListener('visibilitychange', startCarousel, { signal });
-      startCarousel();
-    }
+    const start = () => {
+      stop();
+      if (reduceMotion || isHovered || document.hidden || slides.length < 2) return;
+      timer = window.setInterval(() => {
+        if (isLoading) return;
+        const nextSlide = (activeSlide + 1) % slides.length;
+        const nextLayer = 1 - activeLayer;
+        const preload = new Image();
+        isLoading = true;
+        preload.onload = () => {
+          const currentImage = heroImages[activeLayer];
+          const nextImage = heroImages[nextLayer];
+          nextImage.src = slides[nextSlide].image;
+          nextImage.alt = slides[nextSlide].alt || '';
+          nextImage.removeAttribute('aria-hidden');
+          currentImage.setAttribute('aria-hidden', 'true');
+          requestAnimationFrame(() => {
+            nextImage.classList.add('is-visible');
+            currentImage.classList.remove('is-visible');
+          });
+          activeLayer = nextLayer;
+          activeSlide = nextSlide;
+          isLoading = false;
+        };
+        preload.onerror = () => {
+          activeSlide = nextSlide;
+          isLoading = false;
+        };
+        preload.src = slides[nextSlide].image;
+      }, 5000);
+    };
 
-    heroCleanup = () => {
-      stopCarousel();
+    const pauseOnHover = () => {
+      isHovered = true;
+      stop();
+    };
+    const resumeAfterHover = () => {
+      isHovered = false;
+      start();
+    };
+
+    heroImages[0].parentElement.addEventListener('mouseenter', pauseOnHover, { signal });
+    heroImages[0].parentElement.addEventListener('mouseleave', resumeAfterHover, { signal });
+    document.addEventListener('visibilitychange', start, { signal });
+    start();
+
+    heroSlideshowCleanup = () => {
+      stop();
       controller.abort();
     };
   }
@@ -410,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
       seen.add(key);
       return true;
     });
-    const tiles = merged.slice(0, 5).map((item) => {
+    const tiles = merged.slice(0, 4).map((item) => {
       const tile = document.createElement('a');
       tile.className = 'category-tile';
       tile.href = item.link_url || '#shop';
@@ -887,11 +838,11 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Products could not be refreshed. Please reload the page.');
       }
     } finally {
-      initHeroCarousel(getMoodSlidesFromDom());
+      initHeroSlideshow(getMoodSlidesFromDom());
     }
   }
 
-  initHeroCarousel(getMoodSlidesFromDom());
+  initHeroSlideshow(getMoodSlidesFromDom());
 
   try {
     const returnScroll = sessionStorage.getItem('venu.return.scroll');

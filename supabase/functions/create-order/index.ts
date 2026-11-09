@@ -118,7 +118,10 @@ Deno.serve(async (req) => {
     const { data: link, error: linkError } = await db.storage.from('order-images')
       .createSignedUrl(order.image_path, 7 * 24 * 60 * 60);
     if (linkError) throw linkError;
-    return respond({ id: order.id, image_url: link.signedUrl, expires_in_days: 7 });
+    return respond({
+      id: order.id, image_url: link.signedUrl, expires_in_days: 7,
+      share_token: order.image_share_token, share_expires_at: order.image_share_expires_at,
+    });
   } catch (error) {
     console.error('Order submission failed:', error instanceof Error ? error.message : 'Backend error');
     return respond({ error: 'Could not save your order. Please try again. If this continues, contact the shop.' }, 500);
