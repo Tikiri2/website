@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.delete-order]
 verify_jwt = false
+
+[functions.delete-product-images]
+verify_jwt = false

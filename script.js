@@ -8,12 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
      --------------------------------------------------------- */
   let cards = [...document.querySelectorAll('.product-card')];
   const categoryButtons = [...document.querySelectorAll('.category-button')];
-  const searchInput = document.getElementById('product-search');
   const sortSelect = document.getElementById('product-sort');
   const productGrid = document.getElementById('product-grid');
   const resultCount = document.getElementById('result-count');
   const emptyState = document.getElementById('empty-state');
-  const cartTrigger = document.querySelector('.cart-trigger');
   const cartCount = document.querySelector('.cart-count');
   const menuTrigger = document.querySelector('.menu-trigger');
   const mainNav = document.querySelector('.main-nav');
@@ -467,18 +465,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ---------------------------------------------------------
-     Shop: filter + search + sort
+     Shop: filter + sort
      --------------------------------------------------------- */
   function filterProducts() {
-    const query = searchInput.value.trim().toLowerCase();
     let visibleCount = 0;
 
     cards.forEach((card) => {
-      const description = card.querySelector('.product-info p')?.textContent || '';
-      const haystack = `${card.dataset.name} ${card.dataset.category} ${description}`.toLowerCase();
       const matchesCategory = activeFilter === 'all' || card.dataset.category === activeFilter;
-      const matchesSearch = haystack.includes(query);
-      card.hidden = !matchesCategory || !matchesSearch;
+      card.hidden = !matchesCategory;
       if (!card.hidden) visibleCount += 1;
     });
 
@@ -511,17 +505,10 @@ document.addEventListener('DOMContentLoaded', () => {
     closeMenu();
   });
 
-  searchInput.addEventListener('input', filterProducts);
-
   menuTrigger.addEventListener('click', () => {
     const isOpen = menuTrigger.getAttribute('aria-expanded') === 'true';
     menuTrigger.setAttribute('aria-expanded', String(!isOpen));
     mainNav.classList.toggle('is-open', !isOpen);
-  });
-
-  document.querySelector('.search-trigger').addEventListener('click', () => {
-    document.getElementById('shop').scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
-    searchInput.focus({ preventScroll: true });
   });
 
   sortSelect.addEventListener('change', () => {
@@ -593,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalQuantity = entries.reduce((sum, item) => sum + item.quantity, 0);
     const subtotal = entries.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-    cartCount.textContent = totalQuantity;
+    if (cartCount) cartCount.textContent = totalQuantity;
     drawerCount.textContent = `(${totalQuantity})`;
 
     cartItems.replaceChildren();
@@ -657,6 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function bumpCart() {
+    if (!cartCount) return;
     cartCount.classList.remove('is-bumped');
     void cartCount.offsetWidth;
     cartCount.classList.add('is-bumped');
@@ -675,7 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
     drawer.setAttribute('aria-hidden', 'true');
     backdrop.hidden = true;
     document.body.classList.remove('drawer-open');
-    cartTrigger.focus();
+    document.querySelector('.quick-add:focus')?.focus();
   }
 
   cartItems.addEventListener('click', (event) => {
@@ -688,7 +676,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCart();
   });
 
-  cartTrigger.addEventListener('click', openCart);
   document.querySelector('.close-cart').addEventListener('click', closeCart);
   document.querySelector('.continue-shopping').addEventListener('click', closeCart);
   backdrop.addEventListener('click', closeCart);

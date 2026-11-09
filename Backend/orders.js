@@ -123,9 +123,12 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
   async function adminAction(body) {
     const { data, error } = await client.functions.invoke('delete-order', { body });
     if (error) {
+      if (error.context?.status === 404) {
+        throw new Error('Order deletion is not enabled yet. Deploy the order-management migration and the delete-order function, then refresh the CMS.');
+      }
       let detail;
       try { detail = await error.context?.json(); } catch { /* Keep the original error. */ }
-      throw new Error(detail?.error || error.message);
+      throw new Error(detail?.error || detail?.message || error.message);
     }
     if (data?.error) throw new Error(data.error);
     return data;
@@ -136,7 +139,7 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
     if (token !== generation) return;
     if (error) {
       document.getElementById('order-cleanup-notice').hidden = false;
-      document.getElementById('order-cleanup-message').textContent = 'Could not check image cleanup. Apply the order-management migration if this is a new setup.';
+      document.getElementById('order-cleanup-message').textContent = 'Order deletion/image cleanup is not ready. Apply the order-management migration and deploy the delete-order function, then refresh.';
       return;
     }
     showCleanup(count || 0);

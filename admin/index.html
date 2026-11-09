@@ -12,7 +12,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../Backend/admin.css" />
-    <link rel="stylesheet" href="../Backend/dashboard.css" />
+    <link rel="stylesheet" href="../Backend/dashboard.css?v=image-trash" />
   </head>
   <body>
     <header class="admin-header">
@@ -56,6 +56,8 @@
             <button class="cms-tab" type="button" data-tab="orders" aria-pressed="false"><span aria-hidden="true">▤</span> Orders <span id="new-orders-count" class="sidebar-order-count" aria-label="New orders" aria-live="polite">—</span></button>
             <button class="cms-tab" type="button" data-tab="products" aria-pressed="false"><span aria-hidden="true">▣</span> Products</button>
             <button class="cms-tab" type="button" data-tab="homepage" aria-pressed="false"><span aria-hidden="true">◈</span> Homepage</button>
+            <button class="cms-tab" type="button" data-tab="users" aria-pressed="false"><span aria-hidden="true">♙</span> CMS users</button>
+            <button class="cms-tab" type="button" data-tab="image-trash" aria-pressed="false"><span aria-hidden="true">♲</span> Image trash</button>
           </nav>
           <div class="sidebar-footer"><strong>VENU Shoues</strong><span>Your store, at a glance.</span><a href="../index.html">Visit storefront ↗</a></div>
         </aside>
@@ -71,7 +73,8 @@
           </div>
         </div>
 
-        <div id="products-tab" class="cms-layout" hidden>
+        <div id="add-product-tab" class="product-editor-layout" hidden>
+          <button class="text-button product-back-button" type="button" data-goto="products">← Back to products</button>
           <section class="panel editor-panel">
             <div class="section-heading">
               <h2 id="form-title">Add a product</h2>
@@ -89,14 +92,6 @@
                 </label>
                 <label>Price (Rs.)<input name="price" type="number" min="1" step="1" required /></label>
               </div>
-              <label>Product image
-                <input id="image-file" name="image_file" type="file" accept="image/jpeg,image/png,image/webp,image/avif" required />
-                <span class="field-help">JPG, PNG, WebP or AVIF · Maximum 5 MB</span>
-              </label>
-              <div id="image-preview" class="image-preview" hidden>
-                <img id="image-preview-img" alt="Selected product preview" />
-                <span id="image-preview-label"></span>
-              </div>
               <label>Image description<input name="image_alt" maxlength="180" required /></label>
               <label>Badge <span class="optional">(optional)</span><input name="badge" maxlength="30" placeholder="JUST LANDED" /></label>
               <div class="field-row">
@@ -112,26 +107,42 @@
                 </label>
                 <label>Display order<input name="display_order" type="number" step="1" value="0" /></label>
               </div>
-              <div class="field-row">
-                <label>Colours <span class="optional">(optional)</span>
-                  <input name="colors" placeholder="Rose:#c93728, Ivory:#eee9dc" />
-                  <span class="field-help">Name:hex pairs, separated by commas. Shown on the product page.</span>
-                </label>
+              <section class="product-colours-editor" aria-labelledby="product-colours-title">
+                <div class="section-heading"><h2 id="product-colours-title">Colours &amp; photos</h2><button id="add-product-colour" class="button button-outline" type="button">+ Add colour</button></div>
+                <p class="field-help">JPG, PNG, WebP or AVIF · Up to 5 MB each. Add at least one colour photo; the first available photo is also the main product image.</p>
+                <p id="product-colours-empty" class="field-help">Add a colour and its photo to get started.</p>
+                <div id="product-colour-list"></div>
+              </section>
                 <label>EU sizes <span class="optional">(optional)</span>
                   <input name="sizes" placeholder="36, 37, 38, 39, 40" />
                   <span class="field-help">Comma separated. Used by the custom order page. Leave blank for 36–40.</span>
                 </label>
-              </div>
               <label class="checkbox-label"><input name="published" type="checkbox" checked /> Show this product in the shop</label>
               <button id="save-product" class="button button-primary" type="submit">Add product</button>
             </form>
           </section>
+        </div>
 
+        <div id="products-tab" class="products-layout" hidden>
           <section class="panel inventory-panel">
-            <div class="section-heading"><h2>Inventory</h2><button id="refresh-products" class="text-button" type="button">Refresh</button></div>
+            <div class="section-heading"><div class="inventory-title"><h2>Inventory</h2><span id="inventory-count" class="count-pill">0 products</span></div><div class="row-actions"><button class="button button-primary" type="button" data-goto="add-product">Add product</button><button id="refresh-products" class="text-button" type="button">Refresh</button></div></div>
+            <p class="field-help">Drag the ⠿ handle to change product order. Changes save automatically.</p>
+            <p id="product-reorder-message" class="field-help" role="status" aria-live="polite"></p>
             <div id="product-list" class="product-list"></div>
           </section>
+        </div>
 
+        <div id="image-trash-tab" hidden>
+          <section class="panel">
+            <div class="section-heading"><div class="inventory-title"><h2>Unused product photos</h2><span id="image-trash-count" class="count-pill">—</span></div><div class="row-actions"><button id="refresh-image-trash" type="button" class="text-button">Refresh</button><button id="delete-shown-images" type="button" class="button button-outline" disabled>Delete shown images</button></div></div>
+            <p class="panel-description">Replaced/removed photos go here only when no product or homepage uses them. Files stay in Storage until you permanently delete them. Used images are checked again before deletion.</p>
+            <p id="image-trash-message" role="status" aria-live="polite"></p>
+            <div id="image-trash-list" class="image-trash-grid"></div>
+            <div class="order-pagination"><button id="image-trash-prev" type="button" class="text-button" disabled>← Previous</button><span id="image-trash-page"></span><button id="image-trash-next" type="button" class="text-button" disabled>Next →</button></div>
+          </section>
+        </div>
+
+        <div id="users-tab" class="cms-users-layout" hidden>
           <section class="panel admin-users-panel">
             <div class="section-heading"><h2>Add a CMS user</h2></div>
             <p class="panel-description">First invite or create their account in Supabase Authentication → Users. Then enter the same email below to give them CMS access.</p>
@@ -256,6 +267,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../cms-config.js"></script>
     <script src="../Backend/orders.js"></script>
-    <script src="../Backend/admin.js"></script>
+    <script src="../Backend/product-colours.js?v=image-strip"></script>
+    <script src="../Backend/product-reorder.js"></script>
+    <script src="../Backend/image-trash.js"></script>
+    <script src="../Backend/admin.js?v=image-trash"></script>
   </body>
 </html>

@@ -52,8 +52,7 @@ img { display: block; max-width: 100%; }
   flex: 1;
   min-height: 0;
   width: min(1180px, calc(100% - 60px));
-  max-height: 780px;
-  margin: auto auto clamp(18px, 4vh, 40px);
+  margin: 0 auto;
   border: 1px solid #ffffff;
   border-radius: 28px;
   box-shadow: 0 22px 70px -30px #6b354b38;
@@ -132,7 +131,7 @@ img { display: block; max-width: 100%; }
   .preview-caption > span:first-child { font-size: 30px; }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 820px), (min-width: 821px) and (orientation: portrait) and (max-aspect-ratio: 3/4) {
   .custom-header { height: 56px; padding: 0 18px; }
   .custom-brand { font-size: 16px; gap: 8px; }
   .brand-badge { width: 29px; height: 29px; font-size: 20px; }
@@ -246,7 +245,9 @@ img { display: block; max-width: 100%; }
   position: relative;
   inset: auto;
   align-self: stretch;
+  flex: none;
   width: 100%;
+  min-height: 0;
   margin: 0;
   border-radius: 18px;
   background: #fff;
@@ -313,8 +314,8 @@ img { display: block; max-width: 100%; }
 .wheel-option:focus-visible { outline-offset: -3px; border-radius: 6px; }
 .fit-note { font-size: 9px; }
 
-@media (max-width: 820px) {
-  .preview-panel { grid-template-columns: minmax(0, 1fr) 86px; padding: 12px; gap: 10px; }
+@media (max-width: 820px), (min-width: 821px) and (orientation: portrait) and (max-aspect-ratio: 3/4) {
+  .preview-panel { grid-template-columns: minmax(0, 1fr) 86px; grid-template-rows: minmax(0, 1fr); padding: 12px; gap: 10px; }
   .preview-frame { border-radius: 13px; }
   .fit-controls { gap: 12px; }
   .fit-group { padding: 9px 6px 7px; }
@@ -327,6 +328,43 @@ img { display: block; max-width: 100%; }
   .value-wheel { --wheel-height: 90px; }
   .fit-note { display: none; }
   .stepper { margin: 4px 0 0; }
+}
+@media (max-width: 600px) and (min-height: 700px) {
+  .fit-controls { gap: 8px; }
+  .fit-group { padding: 7px 5px; }
+  .value-wheel { --wheel-height: 72px; }
+  .stepper { margin: 4px 0 2px; }
+}
+@media (max-width: 600px) and (max-height: 720px) {
+  .value-wheel { --wheel-height: 86px; }
+}
+@media (min-width: 821px) and (orientation: portrait) and (max-aspect-ratio: 3/4) {
+  .custom-header { height: 68px; padding: 0 32px; }
+  .custom-brand { font-size: 19px; gap: 10px; }
+  .brand-badge { width: 34px; height: 34px; font-size: 23px; }
+  .header-shop-button { padding: 9px 15px; font-size: 12px; }
+  .customizer {
+    width: min(920px, calc(100% - 32px));
+    max-height: calc(100dvh - 84px);
+  }
+  .preview-panel {
+    grid-template-columns: minmax(0, 1fr) 126px;
+    gap: 20px;
+    padding: 22px;
+  }
+  .fit-controls { gap: 16px; }
+  .fit-group { padding: 12px 9px 9px; }
+  .value-wheel { --wheel-height: 120px; }
+  .fit-panel { padding: 24px 30px 18px; gap: 17px; }
+  .fit-intro h1 { font-size: 34px; }
+  .product-price { font-size: 16px; }
+  .product-desc { display: block; font-size: 13px; }
+  .colour-thumb { height: 72px; }
+  .colour-name { font-size: 11px; }
+  .order-form { padding-top: 12px; gap: 8px; }
+  .phone-field input { min-height: 46px; }
+  .button-order { min-height: 50px; font-size: 13px; }
+  .order-reassurance { font-size: 10px; }
 }
 @media (max-height: 540px) and (orientation: landscape) {
   .preview-panel { grid-template-columns: minmax(0, 1fr) 80px; padding: 10px; gap: 8px; }

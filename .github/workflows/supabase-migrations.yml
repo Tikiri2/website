@@ -57,3 +57,6 @@ jobs:
 
       - name: Deploy admin order deletion
         run: supabase functions deploy delete-order --remote="$SUPABASE_PROJECT_ID" --yes
+
+      - name: Deploy product image trash deletion
+        run: supabase functions deploy delete-product-images --remote="$SUPABASE_PROJECT_ID" --yes

@@ -7,16 +7,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginForm = document.getElementById('login-form');
   const productForm = document.getElementById('product-form');
   const productList = document.getElementById('product-list');
-  const imageFileInput = document.getElementById('image-file');
-  const imagePreview = document.getElementById('image-preview');
-  const imagePreviewImage = document.getElementById('image-preview-img');
-  const imagePreviewLabel = document.getElementById('image-preview-label');
   const adminUserForm = document.getElementById('admin-user-form');
   const addAdminUserButton = document.getElementById('add-admin-user');
   const statusMessage = document.getElementById('status-message');
   const formTitle = document.getElementById('form-title');
   const saveButton = document.getElementById('save-product');
   const cancelEditButton = document.getElementById('cancel-edit');
+  const colourEditor = window.createProductColourEditor(resolveImageUrl);
   const panelTitle = document.getElementById('panel-title');
   const panelDescription = document.getElementById('panel-description');
   const panelCount = document.getElementById('panel-count');
@@ -46,8 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let ordersManager;
   let orderTotal = 0;
   let editingId = null;
-  let editingImageUrl = '';
-  let previewObjectUrl = '';
+  let productEditorVersion = 0;
   let cardEditingId = null;
   let cardEditingImageUrl = '';
   let cardPreviewObjectUrl = '';
@@ -55,6 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let siteCards = [];
   let imageObjectUrls = [];
   let productTotal = 0;
+  let productReorder;
+  let imageTrash;
   let cardTotal = 0;
   let activeTab = 'dashboard';
   let activeSubtab = 'images';
@@ -148,7 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function updatePanelCount() {
     document.getElementById('dashboard-products').textContent = String(productTotal);
     document.getElementById('dashboard-cards').textContent = String(cardTotal);
-    panelCount.hidden = activeTab === 'dashboard';
+    document.getElementById('inventory-count').textContent = `${productTotal} product${productTotal === 1 ? '' : 's'}`;
+    panelCount.hidden = ['dashboard', 'add-product', 'products', 'users', 'image-trash'].includes(activeTab);
     const count = activeTab === 'orders' ? orderTotal : activeTab === 'products' ? productTotal : cardTotal;
     const label = activeTab === 'orders' ? 'order' : activeTab === 'products' ? 'product' : 'card';
     panelCount.textContent = `${count} ${label}${count === 1 ? '' : 's'}`;
@@ -157,24 +156,32 @@ document.addEventListener('DOMContentLoaded', () => {
   function setTab(tab) {
     activeTab = tab;
     tabButtons.forEach((button) => {
-      const isActive = button.dataset.tab === tab;
+      const isActive = button.dataset.tab === (tab === 'add-product' ? 'products' : tab);
       button.classList.toggle('is-active', isActive);
       button.setAttribute('aria-pressed', String(isActive));
     });
     productsTab.hidden = tab !== 'products';
+    document.getElementById('add-product-tab').hidden = tab !== 'add-product';
     homepageTab.hidden = tab !== 'homepage';
     document.getElementById('orders-tab').hidden = tab !== 'orders';
     document.getElementById('dashboard-tab').hidden = tab !== 'dashboard';
-    document.getElementById('cms-page-heading').hidden = tab === 'orders';
-    panelTitle.textContent = tab === 'dashboard' ? 'Dashboard' : tab === 'orders' ? 'Orders' : tab === 'products' ? 'Products' : 'Homepage';
+    document.getElementById('users-tab').hidden = tab !== 'users';
+    document.getElementById('image-trash-tab').hidden = tab !== 'image-trash';
+    document.getElementById('cms-page-heading').hidden = tab === 'orders' || tab === 'products';
+    panelTitle.textContent = tab === 'image-trash' ? 'Image trash' : tab === 'users' ? 'CMS users' : tab === 'add-product' ? (editingId ? 'Edit product' : 'Add product')
+      : tab === 'dashboard' ? 'Dashboard' : tab === 'orders' ? 'Orders' : tab === 'products' ? 'Products' : 'Homepage';
     panelDescription.textContent =
-      tab === 'dashboard' ? 'Welcome back. Here is what is happening in your store.' : tab === 'products'
+      tab === 'image-trash' ? 'Review unused colour photos and permanently remove files you no longer need.'
+      : tab === 'users' ? 'Give existing Supabase accounts access to manage your store.'
+      : tab === 'add-product' ? 'Add or update a pair, its image, colours and available sizes.'
+      : tab === 'dashboard' ? 'Welcome back. Here is what is happening in your store.' : tab === 'products'
         ? "Manage your women's heels and sandals. Published products appear in your online shop."
         : tab === 'orders' ? 'Review order images, contact customers and manage fulfilment.'
         : 'Change the images, cards and words on your homepage. Start with the Images tab.';
     updatePanelCount();
     if (tab === 'orders') ordersManager?.load();
     if (tab === 'dashboard') ordersManager?.loadDashboard();
+    if (tab === 'image-trash') imageTrash?.load();
   }
 
   function setSubTab(tab) {
@@ -735,6 +742,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function showSignedOut() {
+    imageTrash?.clear();
+    productReorder?.clear();
     ordersManager?.clear();
     document.body.classList.remove('is-signed-in');
     loginPanel.hidden = false;
@@ -832,6 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const image = document.createElement('img');
     image.alt = '';
+    image.draggable = false;
     image.loading = 'lazy';
     const imageCandidates = getImageCandidates(product.image_url);
     let imageCandidateIndex = 0;
@@ -868,8 +878,10 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', () => deleteProduct(product));
     actions.append(editButton, deleteButton);
+    editButton.disabled = deleteButton.disabled = !!productReorder?.busy;
 
     row.append(details, actions);
+    productReorder?.decorate(row, product);
     return row;
   }
 
@@ -885,43 +897,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     productTotal = data.length;
+    productReorder?.setProducts(data);
     productList.replaceChildren(...data.map(createProductRow));
     updatePanelCount();
-  }
-
-  function formatColourOptions(colors) {
-    if (!Array.isArray(colors)) return '';
-    return colors
-      .map((color) => {
-        if (!color || typeof color !== 'object') return '';
-        const name = String(color.name || '').trim();
-        const hex = String(color.hex || '').trim();
-        if (!name && !hex) return '';
-        return `${name || 'Colour'}:${hex || '#d9c9cf'}`;
-      })
-      .filter(Boolean)
-      .join(', ');
   }
 
   function formatSizeOptions(sizes) {
     if (!Array.isArray(sizes)) return '';
     return sizes.map((size) => String(size)).filter(Boolean).join(', ');
-  }
-
-  function parseColourOptions(value) {
-    return String(value || '')
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .slice(0, 8)
-      .map((part) => {
-        const separator = part.indexOf(':');
-        const name = (separator === -1 ? part : part.slice(0, separator)).trim();
-        let hex = (separator === -1 ? '' : part.slice(separator + 1)).trim();
-        if (hex && !hex.startsWith('#')) hex = `#${hex}`;
-        if (!/^#[0-9a-f]{3,8}$/i.test(hex)) hex = '#d9c9cf';
-        return { name: name || 'Colour', hex };
-      });
   }
 
   function parseSizeOptions(value) {
@@ -933,60 +916,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function startEditing(product) {
+    productEditorVersion++;
     editingId = product.id;
-    editingImageUrl = product.image_url;
     for (const [field, value] of Object.entries(product)) {
       const input = productForm.elements.namedItem(field);
       if (!input) continue;
       if (input.type === 'checkbox') input.checked = Boolean(value);
       else input.value = field === 'image_url' ? normalizeAssetPath(value ?? '') : value ?? '';
     }
-    productForm.elements.namedItem('colors').value = formatColourOptions(product.colors);
+    colourEditor.setValue(product.colors, product.image_url);
     productForm.elements.namedItem('sizes').value = formatSizeOptions(product.sizes);
-    imageFileInput.required = false;
-    showImagePreview(resolveImageUrl(editingImageUrl), 'Current product image');
     formTitle.textContent = 'Edit product';
     saveButton.textContent = 'Save changes';
     cancelEditButton.hidden = false;
+    setTab('add-product');
     productForm.elements.namedItem('name').focus();
   }
 
   function resetEditor() {
+    productEditorVersion++;
+    colourEditor.setValue([]);
     editingId = null;
-    editingImageUrl = '';
-    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-    previewObjectUrl = '';
     productForm.reset();
-    imageFileInput.required = true;
-    imagePreview.hidden = true;
-    imagePreviewImage.removeAttribute('src');
-    imagePreviewLabel.textContent = '';
     productForm.elements.namedItem('display_order').value = '0';
     formTitle.textContent = 'Add a product';
     saveButton.textContent = 'Add product';
     cancelEditButton.hidden = true;
   }
-
-  function showImagePreview(src, label) {
-    imagePreviewImage.src = src;
-    imagePreviewLabel.textContent = label;
-    imagePreview.hidden = false;
-  }
-
-  imageFileInput.addEventListener('change', () => {
-    const file = imageFileInput.files?.[0];
-    if (!file) {
-      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-      previewObjectUrl = '';
-      if (editingImageUrl) showImagePreview(resolveImageUrl(editingImageUrl), 'Current product image');
-      else imagePreview.hidden = true;
-      return;
-    }
-
-    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-    previewObjectUrl = URL.createObjectURL(file);
-    showImagePreview(previewObjectUrl, file.name);
-  });
 
   loginForm.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -1009,21 +965,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   productForm.addEventListener('submit', async (event) => {
     event.preventDefault();
+    if (saveButton.disabled) return;
     const formData = new FormData(productForm);
-    const imageFile = formData.get('image_file');
-    const hasImageFile = imageFile instanceof File && imageFile.size > 0;
-    if (!hasImageFile && !editingImageUrl) {
-      setStatus('Choose a product image to upload.', true);
-      return;
+    let colourSnapshot;
+    try {
+      colourSnapshot = colourEditor.snapshot();
+      if (!colourSnapshot.some((entry) => entry.file || entry.data.image)) {
+        throw new Error('Add at least one colour photo before saving this product.');
+      }
     }
-    if (hasImageFile && !IMAGE_EXTENSIONS[imageFile.type]) {
-      setStatus('Choose a JPG, PNG, WebP or AVIF image.', true);
-      return;
-    }
-    if (hasImageFile && imageFile.size > MAX_IMAGE_SIZE) {
-      setStatus('The image must be 5 MB or smaller.', true);
-      return;
-    }
+    catch (error) { setStatus(error.message, true); return; }
 
     const productFields = {
       name: String(formData.get('name')).trim(),
@@ -1033,44 +984,51 @@ document.addEventListener('DOMContentLoaded', () => {
       image_alt: String(formData.get('image_alt')).trim(),
       badge: String(formData.get('badge')).trim(),
       image_tone: String(formData.get('image_tone')),
-      colors: parseColourOptions(formData.get('colors')),
       sizes: parseSizeOptions(formData.get('sizes')),
       published: formData.has('published'),
       display_order: Number(formData.get('display_order')) || 0,
     };
 
-    let uploadedPath = '';
+    const uploadedPaths = [];
+    const productIdToSave = editingId;
+    const editorVersion = productEditorVersion;
+    let productSaved = false;
+    const controls = [...productForm.querySelectorAll('input, select, textarea, button')].filter((control) => !control.disabled);
+    controls.forEach((control) => { control.disabled = true; });
     saveButton.disabled = true;
+    const uploadProductImage = async (file) => {
+      const extension = IMAGE_EXTENSIONS[file.type];
+      if (!extension || !file.size || file.size > MAX_IMAGE_SIZE) throw new Error('Choose a JPG, PNG, WebP or AVIF image up to 5 MB.');
+      const path = `${crypto.randomUUID()}.${extension}`;
+      uploadedPaths.push(path);
+      const { error } = await client.storage.from(IMAGE_BUCKET).upload(path, file, {
+        cacheControl: '3600', contentType: file.type, upsert: false,
+      });
+      if (error) throw new Error(`Image upload failed: ${error.message}`);
+      return client.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+    };
     try {
-      let imageUrl = editingImageUrl;
-      if (hasImageFile) {
-        const extension = IMAGE_EXTENSIONS[imageFile.type];
-        uploadedPath = `${crypto.randomUUID()}.${extension}`;
-        const { error: uploadError } = await client.storage
-          .from(IMAGE_BUCKET)
-          .upload(uploadedPath, imageFile, {
-            cacheControl: '3600',
-            contentType: imageFile.type,
-            upsert: false,
-          });
-        if (uploadError) throw new Error(`Image upload failed: ${uploadError.message}`);
-        imageUrl = client.storage.from(IMAGE_BUCKET).getPublicUrl(uploadedPath).data.publicUrl;
-      }
+      productFields.colors = await colourEditor.upload(colourSnapshot, uploadProductImage);
+      const imageUrl = colourEditor.coverImage(productFields.colors);
 
       const product = { ...productFields, image_url: imageUrl };
-      const query = editingId
-        ? client.from('products').update(product).eq('id', editingId)
+      const query = productIdToSave
+        ? client.from('products').update(product).eq('id', productIdToSave)
         : client.from('products').insert(product);
       const { error } = await query;
       if (error) throw new Error(`Could not save product: ${error.message}`);
+      productSaved = true;
 
-      setStatus(editingId ? 'Product updated.' : 'Product added.');
-      resetEditor();
+      setStatus(productIdToSave ? 'Product updated.' : 'Product added.');
+      if (editorVersion === productEditorVersion) {
+        resetEditor();
+        if (activeTab === 'add-product') setTab('products');
+      }
       await loadProducts();
     } catch (error) {
-      if (uploadedPath) {
+      if (!productSaved && uploadedPaths.length) {
         try {
-          const { error: cleanupError } = await client.storage.from(IMAGE_BUCKET).remove([uploadedPath]);
+          const { error: cleanupError } = await client.storage.from(IMAGE_BUCKET).remove(uploadedPaths);
           if (cleanupError) console.error('Could not remove unused uploaded image:', cleanupError.message);
         } catch (cleanupError) {
           console.error('Could not remove unused uploaded image:', cleanupError);
@@ -1078,6 +1036,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       setStatus(`Could not save product: ${error.message}`, true);
     } finally {
+      controls.forEach((control) => { control.disabled = false; });
       saveButton.disabled = false;
     }
   });
@@ -1098,7 +1057,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  cancelEditButton.addEventListener('click', resetEditor);
+  cancelEditButton.addEventListener('click', () => {
+    resetEditor();
+    setTab('products');
+  });
   adminUserForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const formData = new FormData(adminUserForm);
@@ -1169,6 +1131,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   try {
     client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+    imageTrash = window.createImageTrash(client, setStatus);
+    productReorder = window.createProductReorder({
+      render: (products) => productList.replaceChildren(...products.map(createProductRow)),
+      persist: (products) => window.persistProductOrder(client, products),
+      onSaved: () => setStatus('Product order saved. The shop uses this order for its default listing.'),
+      onError: async (error) => {
+        await loadProducts();
+        setStatus(`Could not finish reordering: ${error.message}. Some positions may have saved; refresh before trying again.`, true);
+      },
+      onBusy: (busy) => {
+        document.getElementById('refresh-products').disabled = busy;
+        document.getElementById('product-reorder-message').textContent = busy ? 'Saving product order…' : '';
+      },
+    });
     ordersManager = window.createOrdersManager(client, setStatus, (count) => {
       orderTotal = count;
       updatePanelCount();

@@ -27,6 +27,59 @@ body.is-signed-in .admin-main { margin-left: 210px; }
 .sidebar-footer strong { color: #f0f0f1; font-size: 13px; }
 .sidebar-footer a { color: #72aee6; text-decoration: none; margin-top: 10px; }
 .page-heading { margin-bottom: 24px; }
+.products-layout { display: grid; gap: 22px; }
+.product-editor-layout { max-width: 900px; }
+.cms-users-layout { max-width: 900px; }
+.image-trash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+.trash-image-card { display: grid; align-content: start; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--line); background: #f6f7f7; }
+.trash-image-card img { width: 100%; aspect-ratio: 1; object-fit: contain; background: white; }
+.trash-image-card small { color: var(--muted); line-height: 1.5; }
+.trash-image-name { margin: 0; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trash-image-card button { justify-self: start; }
+.product-back-button { margin-bottom: 14px; padding-left: 0; }
+.inventory-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.inventory-title .count-pill { font-size: 11px; padding: 4px 8px; }
+.products-layout .product-row { grid-template-columns: 24px 62px minmax(0, 1fr) auto; }
+.products-layout .product-row.image-unavailable::before { grid-column: 2; }
+.product-drag-handle { cursor: grab; border: 0; padding: 4px 0; background: none; color: #8c8f94; font-size: 25px; line-height: 1; }
+.product-drag-handle:active { cursor: grabbing; }
+.product-drag-handle:hover { color: #2271b1; }
+.product-row.is-dragging { opacity: .4; }
+.product-row.drop-before { box-shadow: inset 0 3px #2271b1; }
+.product-row.drop-after { box-shadow: inset 0 -3px #2271b1; }
+#product-reorder-message:empty { display: none; }
+@media (max-width: 520px) {
+  .products-layout .product-row { grid-template-columns: 24px 50px minmax(0, 1fr); }
+  .products-layout .product-row > .row-actions { grid-column: 3; }
+}
+.product-colours-editor { border-top: 1px solid var(--line); padding-top: 18px; }
+#product-colour-list { display: grid; gap: 10px; }
+.product-colour-row { position: relative; min-height: 124px; padding: 12px 12px 12px 148px; border: 1px solid var(--line); background: #f6f7f7; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .65fr) minmax(0, 1.4fr); gap: 10px 12px; align-items: start; }
+.product-colour-row > .field-row { display: contents; }
+.product-colour-row label { min-width: 0; }
+.product-colour-row > label { grid-column: 3; grid-row: 1; }
+.product-colour-row > label .field-help { display: none; }
+.product-colour-row input[type="file"] { min-width: 0; min-height: 34px; padding: 4px; font-size: 11px; }
+.product-colour-row input[type="file"]::file-selector-button { padding: 4px 6px; margin-right: 5px; }
+.product-colour-row > .row-actions { grid-column: 1 / -1; grid-row: 2; justify-content: flex-end; flex-wrap: wrap; align-self: center; gap: 4px; }
+.product-colour-row .text-button { font-size: 11px; }
+.colour-photo-preview { position: absolute; inset: 0 auto 0 0; width: 132px; display: flex; align-items: center; justify-content: center; padding: 12px; border-right: 1px solid var(--line); background: #eeeef0; color: var(--muted); font-size: 11px; text-align: center; }
+.colour-photo-preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border: 0; background: white; }
+.colour-photo-preview.has-photo span { display: none; }
+.colour-upload-error { grid-column: 1 / -1; color: #b32d2e; margin: 0; font-size: 12px; }
+.colour-upload-error:empty { display: none; }
+@media (max-width: 600px) {
+  .product-colour-row { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-left: 100px; }
+  .product-colour-row > label { grid-column: 1 / -1; grid-row: 2; }
+  .colour-photo-preview { width: 88px; }
+  .product-colour-row > .row-actions { grid-column: 1 / -1; grid-row: 3; }
+}
+@media (max-width: 420px) {
+  .product-colour-row { grid-template-columns: minmax(0, 1fr); padding-left: 84px; }
+  .product-colour-row > label { grid-column: 1; grid-row: 3; }
+  .colour-photo-preview { width: 72px; }
+  .product-colour-row > .row-actions { grid-row: 4; }
+}
 .page-heading .eyebrow { display: none; }
 h1, h2, h3 { font-family: inherit; letter-spacing: normal; }
 h1 { font-size: 26px; font-weight: 500; }

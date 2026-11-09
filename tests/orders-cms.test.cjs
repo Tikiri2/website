@@ -67,6 +67,7 @@ function cms(options = {}) {
     functions: { async invoke(name, { body }) {
       assert.equal(name, 'delete-order');
       state.actions.push(body);
+      if (options.deleteNotDeployed) return { error: { message: 'Function failed', context: { status: 404 } } };
       if (options.deleteError) return { error: { message: 'Failed', context: { async json() { return { error: 'Order changed. Refresh before deleting.' }; } } } };
       if (body.action === 'delete') state.removed = true;
       return { data: { deleted: true, cleanup_pending: body.action === 'cleanup' ? 0 : options.cleanupCount || 0 }, error: null };
@@ -156,6 +157,15 @@ test('stale delete errors keep the record and show a recoverable error', async (
   assert.equal(state.removed, undefined);
   assert.match(body.lastChild.lastChild.textContent, /Refresh before deleting/);
   assert.equal(body.children[3].children[2].disabled, false);
+});
+test('missing delete backend shows actionable deployment guidance without claiming deletion', async () => {
+  const { manager, state, el } = cms({ deleteNotDeployed: true });
+  await manager.load();
+  const body = el('order-list').children[0].children[1];
+  await body.children[3].children[2].emit('click');
+  assert.equal(state.removed, undefined);
+  assert.match(body.lastChild.lastChild.textContent, /Deploy.*delete-order/);
+  assert.equal(el('order-list').children.length, 1);
 });
 test('pending image cleanup remains visible and can be retried', async () => {
   const { manager, state, el } = cms({ cleanupCount: 1 });
