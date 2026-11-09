@@ -19,6 +19,7 @@ const fixture = () => ({ id: '33333333-3333-4333-8333-333333333333', product_nam
   colour: 'Rose', shoe_size: 38, heel_height: 5, customer_phone: '0771234567', product_price: 12900,
   courier_fee: 250, total: 13150, image_path: 'private/order.png', status: 'new', admin_notes: '',
   created_at: '2026-11-09T10:00:00Z', updated_at: '2026-11-09T10:00:00Z' });
+const orderTab = (el, status) => el('order-status-tabs').children.find((tab) => tab.id === `order-tab-${status}`);
 function cms(options = {}) {
   const elements = new Map();
   const el = (id) => { if (!elements.has(id)) elements.set(id, new Element()); return elements.get(id); };
@@ -62,7 +63,7 @@ function cms(options = {}) {
       state.rpcCalls++;
       if (options.overviewMissing) return { data: null, error: { code: 'PGRST202', message: 'Function not found' } };
       if (options.overviewDenied) return { data: null, error: { code: '42501', message: 'Access denied' } };
-      return { data: { total: state.removed ? 0 : 1, [state.record.status]: state.removed ? 0 : options.count || 1, order_value: 13150 }, error: null };
+      return { data: { total: state.removed ? 0 : options.count || 1, [state.record.status]: state.removed ? 0 : options.count || 1, order_value: 13150 }, error: null };
     },
     functions: { async invoke(name, { body }) {
       assert.equal(name, 'delete-order');
@@ -182,20 +183,21 @@ test('dashboard loads aggregate totals and renders all six pipeline filters', as
   assert.equal(el('dashboard-pipeline').children.length, 6);
   assert.equal(el('dashboard-recent-orders').children.length, 1);
   await el('dashboard-pipeline').children[2].emit('click');
-  assert.equal(el('order-status-tabs').children[2]['aria-selected'], 'true');
+  assert.equal(orderTab(el, 'processing')['aria-selected'], 'true');
   manager.clear();
   assert.equal(el('dashboard-recent-orders').children.length, 0);
 });
-test('six status tabs show counts and only their matching orders', async () => {
+test('All orders plus six status tabs show counts and matching orders', async () => {
   const { manager, el } = cms();
   await manager.load();
   const tabs = el('order-status-tabs').children;
-  assert.equal(tabs.length, 6);
-  assert.equal(tabs[0]['aria-selected'], 'true');
-  assert.equal(tabs[0].children[1].textContent, '1');
-  assert.equal(tabs[4].children[1].textContent, '0');
+  assert.equal(tabs.length, 7);
+  assert.equal(tabs[0].id, 'order-tab-all');
+  assert.equal(orderTab(el, 'new')['aria-selected'], 'true');
+  assert.equal(orderTab(el, 'new').children[1].textContent, '1');
+  assert.equal(orderTab(el, 'completed').children[1].textContent, '0');
   await manager.selectStatus('shipping');
-  assert.equal(tabs[3]['aria-selected'], 'true');
+  assert.equal(orderTab(el, 'shipping')['aria-selected'], 'true');
   assert.equal(el('order-list').children.length, 0);
   assert.equal(el('orders-message').textContent, 'No shipping orders.');
   assert.equal(el('order-status-panel')['aria-labelledby'], 'order-tab-shipping');
@@ -204,7 +206,7 @@ test('order counts appear on tabs, not repeated above the order list', async () 
   const { manager, state, el } = cms({ count: 26 });
   await manager.load();
   assert.equal(el('orders-message').textContent, '');
-  assert.equal(el('order-status-tabs').children[0].children[1].textContent, '26');
+  assert.equal(orderTab(el, 'new').children[1].textContent, '26');
   assert.equal(state.newCount, 26);
 });
 test('main Orders badge uses New count rather than the selected status count', async () => {
@@ -217,13 +219,37 @@ test('main Orders badge uses New count rather than the selected status count', a
   manager.clear();
   assert.equal(state.newCount, null);
 });
+test('All orders skips status filtering and shows total without changing the New badge', async () => {
+  const { manager, state, el } = cms({ status: 'completed', count: 3 });
+  await manager.selectStatus('all');
+  const query = state.queries.find((calls) => calls.table === 'orders' && calls.some((call) => call[0] === 'range'));
+  assert.equal(query.some((call) => ['eq', 'in'].includes(call[0]) && call[1] === 'status'), false);
+  assert.equal(orderTab(el, 'all').children[1].textContent, '3');
+  assert.equal(orderTab(el, 'all')['aria-selected'], 'true');
+  assert.equal(state.count, 3);
+  assert.equal(state.newCount, 0);
+  assert.equal(el('order-list').children.length, 1);
+});
+test('All orders stays selected when updating an order and has a clear empty state', async () => {
+  const { manager, state, el } = cms();
+  await manager.selectStatus('all');
+  const form = el('order-list').children[0].children[1].lastChild;
+  form.children[0].children[0].value = 'confirmed';
+  await form.emit('submit');
+  assert.equal(orderTab(el, 'all')['aria-selected'], 'true');
+  assert.equal(el('order-list').children.length, 1);
+  state.removed = true;
+  await manager.load();
+  assert.equal(el('orders-message').textContent, 'No orders.');
+  assert.equal(orderTab(el, 'all').children[1].textContent, '0');
+});
 test('missing overview RPC falls back to exact status counts and updates main badge', async () => {
   const { manager, state, el } = cms({ overviewMissing: true, count: 7 });
   await manager.load();
   await new Promise(setImmediate);
   assert.equal(state.newCount, 7);
-  assert.equal(el('order-status-tabs').children[0].children[1].textContent, '7');
-  assert.equal(el('order-status-tabs').children[4].children[1].textContent, '0');
+  assert.equal(orderTab(el, 'new').children[1].textContent, '7');
+  assert.equal(orderTab(el, 'completed').children[1].textContent, '0');
   const counts = state.queries.filter((query) => query.table === 'orders' && query.some((call) => call[0] === 'select' && call[2]?.head));
   assert.equal(counts.length, 6);
   assert.ok(counts.every((query) => query.some((call) => call[0] === 'select' && call[1] === 'id')));
@@ -236,15 +262,15 @@ test('fallback includes legacy Making and Shipped statuses without double-counti
   const { manager, el } = cms({ overviewMissing: true, status: 'making', count: 3 });
   await manager.selectStatus('processing');
   await new Promise(setImmediate);
-  assert.equal(el('order-status-tabs').children[2].children[1].textContent, '3');
-  assert.equal(el('order-status-tabs').children[3].children[1].textContent, '0');
+  assert.equal(orderTab(el, 'processing').children[1].textContent, '3');
+  assert.equal(orderTab(el, 'shipping').children[1].textContent, '0');
   assert.equal(el('order-list').children.length, 1);
 });
 test('permission failures do not trigger a fallback or show a misleading zero', async () => {
   const { manager, state, el } = cms({ overviewDenied: true });
   await manager.load();
   assert.equal(state.newCount, null);
-  assert.equal(el('order-status-tabs').children[0].children[1].textContent, '—');
+  assert.equal(orderTab(el, 'new').children[1].textContent, '—');
   assert.equal(state.queries.some((query) => query.table === 'orders' && query.some((call) => call[0] === 'select' && call[2]?.head)), false);
 });
 test('expanding an order does not load images; View order image opens it on demand', async () => {
@@ -287,9 +313,9 @@ test('saving a different status opens its tab and updates counts', async () => {
   form.children[0].children[0].value = 'confirmed';
   await form.emit('submit');
   assert.equal(el('order-list').children.length, 1);
-  assert.equal(el('order-status-tabs').children[1]['aria-selected'], 'true');
-  assert.equal(el('order-status-tabs').children[0].children[1].textContent, '0');
-  assert.equal(el('order-status-tabs').children[1].children[1].textContent, '1');
+  assert.equal(orderTab(el, 'confirmed')['aria-selected'], 'true');
+  assert.equal(orderTab(el, 'new').children[1].textContent, '0');
+  assert.equal(orderTab(el, 'confirmed').children[1].textContent, '1');
   await manager.selectStatus('confirmed');
   assert.equal(el('order-list').children.length, 1);
 });
@@ -300,8 +326,8 @@ test('saving Completed confirms the returned status and opens Completed', async 
   form.children[0].children[0].value = 'completed';
   await form.emit('submit');
   assert.equal(state.updates[0].status, 'completed');
-  assert.equal(el('order-status-tabs').children[4]['aria-selected'], 'true');
-  assert.equal(el('order-status-tabs').children[4].children[1].textContent, '1');
+  assert.equal(orderTab(el, 'completed')['aria-selected'], 'true');
+  assert.equal(orderTab(el, 'completed').children[1].textContent, '1');
   assert.equal(el('order-list').children.length, 1);
   assert.ok(state.errors.includes('Order saved as Completed.'));
 });
@@ -361,17 +387,17 @@ test('completed tab supports confirmed permanent deletion and updates its count'
   assert.equal(state.confirmations, 1);
   assert.equal(state.actions[0].action, 'delete');
   assert.equal(el('order-list').children.length, 0);
-  assert.equal(el('order-status-tabs').children[4].children[1].textContent, '0');
+  assert.equal(orderTab(el, 'completed').children[1].textContent, '0');
 });
 test('status tabs support arrow-key navigation and reset pagination', async () => {
   const { manager, state, el } = cms({ count: 26 });
   await manager.load();
   await el('orders-next').emit('click');
   await new Promise(setImmediate);
-  await el('order-status-tabs').children[0].emit('keydown', { key: 'ArrowRight' });
+  await orderTab(el, 'new').emit('keydown', { key: 'ArrowRight' });
   await new Promise(setImmediate);
-  assert.equal(el('order-status-tabs').children[1].focused, true);
-  assert.equal(el('order-status-tabs').children[1]['aria-selected'], 'true');
+  assert.equal(orderTab(el, 'confirmed').focused, true);
+  assert.equal(orderTab(el, 'confirmed')['aria-selected'], 'true');
   const lastOrderQuery = state.queries.filter((query) => query.table === 'orders').at(-1);
   assert.ok(lastOrderQuery.some((call) => call[0] === 'range' && call[1] === 0));
 });

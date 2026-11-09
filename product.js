@@ -73,7 +73,7 @@
       description: 'A touch of gold for your evening plans',
       price: 12900,
       image_url: 'Backend/assets/heel-golden-hour.jpg',
-      image_alt: 'Gold strappy womenâ€™s heel sandal',
+      image_alt: 'Gold strappy women’s heel sandal',
       colours: [
         { name: 'Rose', hex: '#c93728' },
         { name: 'Gold', hex: '#c9a227' },
@@ -88,7 +88,7 @@
       description: 'A playful pop of red for going out',
       price: 10900,
       image_url: 'Backend/assets/heel-red-ribbon.jpg',
-      image_alt: 'Red womenâ€™s heels with ribbon-style straps',
+      image_alt: 'Red women’s heels with ribbon-style straps',
       colours: [
         { name: 'Ruby', hex: '#b3202a' },
         { name: 'Ivory', hex: '#eee9dc' },
@@ -103,7 +103,7 @@
       description: 'A little shimmer, made for celebrations',
       price: 11900,
       image_url: 'Backend/assets/heel-gold-arch.jpg',
-      image_alt: 'Gold open-toe womenâ€™s occasion heels',
+      image_alt: 'Gold open-toe women’s occasion heels',
       colours: [
         { name: 'Gold', hex: '#c9a227' },
         { name: 'Rose', hex: '#c93728' },
@@ -118,7 +118,7 @@
       description: 'Easy, pretty and ready for everyday',
       price: 5900,
       image_url: 'Backend/assets/sandal-black-flower.jpg',
-      image_alt: 'Printed womenâ€™s flat sandals with flower detail',
+      image_alt: 'Printed women’s flat sandals with flower detail',
       colours: [
         { name: 'Maroon', hex: '#7d2b34' },
         { name: 'Cream', hex: '#eee9dc' },
@@ -133,7 +133,7 @@
       description: 'Your comfy favourite for sunny days',
       price: 6900,
       image_url: 'Backend/assets/sandal-orange-strap.jpg',
-      image_alt: 'Orange and cream womenâ€™s strap sandals',
+      image_alt: 'Orange and cream women’s strap sandals',
       colours: [
         { name: 'Sand', hex: '#d9b382' },
         { name: 'Olive', hex: '#7d8c5c' },
@@ -148,7 +148,7 @@
       description: 'Pretty little details for everyday wear',
       price: 7900,
       image_url: 'Backend/assets/sandal-brown-charm.jpg',
-      image_alt: 'Womenâ€™s sandals with decorative charm straps',
+      image_alt: 'Women’s sandals with decorative charm straps',
       colours: [
         { name: 'Blue', hex: '#8096ae' },
         { name: 'Cream', hex: '#eee9dc' },
@@ -291,7 +291,7 @@
 
   function updateSummary() {
     if (!state.product) return;
-    els.summary.textContent = `${state.colour?.name || 'Colour'} Â· EU ${state.size} Â· ${state.heel} cm heel`;
+    els.summary.textContent = `${state.colour?.name || 'Colour'} · EU ${state.size} · ${state.heel} cm heel`;
   }
 
   function selectColour(index) {
@@ -364,7 +364,7 @@
     els.preview.alt = product.image_alt || product.name || 'Selected shoe';
     els.preview.style.filter = 'none';
 
-    document.title = `Customize ${product.name || 'your pair'} â€” ${STORE_NAME}`;
+    document.title = `Customize ${product.name || 'your pair'} — ${STORE_NAME}`;
     renderColours();
   }
 
@@ -565,7 +565,7 @@
       ctx.fillText(String(value), 840, y, 560);
       ctx.textAlign = 'left';
     };
-    row('Colour', state.colour?.name || 'â€”', 730);
+    row('Colour', state.colour?.name || '—', 730);
     row('Shoe size', `EU ${state.size}`, 780);
     row('Heel height', `${state.heel} cm`, 830);
     ctx.fillStyle = '#e6d8df';
@@ -579,7 +579,7 @@
     row('Customer phone', phone, 1143);
     ctx.fillStyle = '#897a83';
     ctx.font = '18px sans-serif';
-    ctx.fillText('Order enquiry Â· Confirm availability & delivery on WhatsApp', 60, 1212);
+    ctx.fillText('Order enquiry · Confirm availability & delivery on WhatsApp', 60, 1212);
     ctx.fillText(`WhatsApp: +${WHATSAPP_NUMBER}`, 60, 1245);
     const blob = await new Promise((resolve, reject) => {
       canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Image export failed')), 'image/png');
@@ -656,6 +656,22 @@
     }
   });
 
+  // Keep the phone field above the software keyboard. The page now scrolls on
+  // mobile instead of squeezing the two panels, and the visual viewport tells
+  // us how much room the keyboard has left.
+  const keepPhoneVisible = () => {
+    if (document.activeElement !== els.phone) return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const rect = els.phone.getBoundingClientRect();
+    const top = viewport.offsetTop + 16;
+    const bottom = viewport.offsetTop + viewport.height - 16;
+    if (rect.bottom > bottom) window.scrollBy(0, rect.bottom - bottom);
+    else if (rect.top < top) window.scrollBy(0, rect.top - top);
+  };
+  els.phone.addEventListener('focus', () => requestAnimationFrame(keepPhoneVisible));
+  window.visualViewport?.addEventListener('resize', keepPhoneVisible);
+
   els.form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const phone = normalizePhone(els.phone.value);
@@ -683,7 +699,7 @@
       orderImageURL = URL.createObjectURL(orderFile);
       document.getElementById('order-card-image').src = orderImageURL;
       document.getElementById('save-order').href = orderImageURL;
-      shareOrderButton.textContent = 'Continue to WhatsApp â†—';
+      shareOrderButton.textContent = 'Continue to WhatsApp ↗';
       shareNote.textContent = `Order ${savedOrder.id.slice(0, 8)} saved. Continue to WhatsApp and tap Send to send your order image link to the shop. The link expires in 7 days. Your order is confirmed only after the shop replies.`;
       if (!result.hasImage) shareNote.textContent += ' Product photo could not load; your order details are included.';
       orderDialog.showModal();

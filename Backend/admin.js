@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let siteCards = [];
   let imageObjectUrls = [];
   let productTotal = 0;
+  let inventoryProducts = [];
+  let activeProductCategory = 'all';
+  const productCategoryButtons = [...document.querySelectorAll('[data-product-category]')];
   let productReorder;
   let imageTrash;
   let cardTotal = 0;
@@ -885,6 +888,30 @@ document.addEventListener('DOMContentLoaded', () => {
     return row;
   }
 
+  function renderProductInventory(products) {
+    inventoryProducts = products;
+    productCategoryButtons.forEach((button) => {
+      const category = button.dataset.productCategory;
+      const active = category === activeProductCategory;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
+      button.querySelector('[data-category-count]').textContent = String(category === 'all'
+        ? products.length : products.filter((product) => product.category === category).length);
+    });
+    const visible = activeProductCategory === 'all' ? products : products.filter((product) => product.category === activeProductCategory);
+    productList.replaceChildren(...visible.map(createProductRow));
+    document.getElementById('product-category-empty').hidden = visible.length > 0;
+    document.getElementById('product-category-panel').setAttribute('aria-labelledby', `product-category-${activeProductCategory}`);
+  }
+
+  function setProductCategory(category) {
+    if (productReorder?.busy || !['all', 'heels', 'sandals'].includes(category)) return;
+    activeProductCategory = category;
+    productReorder?.setCategory(category === 'all' ? null : category);
+    renderProductInventory(inventoryProducts);
+  }
+
   async function loadProducts() {
     const { data, error } = await client
       .from('products')
@@ -898,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     productTotal = data.length;
     productReorder?.setProducts(data);
-    productList.replaceChildren(...data.map(createProductRow));
+    renderProductInventory(data);
     updatePanelCount();
   }
 
@@ -1095,6 +1122,19 @@ document.addEventListener('DOMContentLoaded', () => {
   tabButtons.forEach((button) => {
     button.addEventListener('click', () => setTab(button.dataset.tab));
   });
+  productCategoryButtons.forEach((button, index) => {
+    button.addEventListener('click', () => setProductCategory(button.dataset.productCategory));
+    button.addEventListener('keydown', (event) => {
+      if (productReorder?.busy) return;
+      const target = event.key === 'ArrowRight' ? (index + 1) % productCategoryButtons.length
+        : event.key === 'ArrowLeft' ? (index + productCategoryButtons.length - 1) % productCategoryButtons.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? productCategoryButtons.length - 1 : -1;
+      if (target < 0) return;
+      event.preventDefault();
+      setProductCategory(productCategoryButtons[target].dataset.productCategory);
+      productCategoryButtons[target].focus();
+    });
+  });
   document.querySelectorAll('[data-goto]').forEach((button) => {
     button.addEventListener('click', () => setTab(button.dataset.goto));
   });
@@ -1133,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
     imageTrash = window.createImageTrash(client, setStatus);
     productReorder = window.createProductReorder({
-      render: (products) => productList.replaceChildren(...products.map(createProductRow)),
+      render: renderProductInventory,
       persist: (products) => window.persistProductOrder(client, products),
       onSaved: () => setStatus('Product order saved. The shop uses this order for its default listing.'),
       onError: async (error) => {
@@ -1141,6 +1181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setStatus(`Could not finish reordering: ${error.message}. Some positions may have saved; refresh before trying again.`, true);
       },
       onBusy: (busy) => {
+        productCategoryButtons.forEach((button) => { button.disabled = busy; });
         document.getElementById('refresh-products').disabled = busy;
         document.getElementById('product-reorder-message').textContent = busy ? 'Saving product order…' : '';
       },

@@ -28,6 +28,7 @@ body.is-signed-in .admin-main { margin-left: 210px; }
 .sidebar-footer a { color: #72aee6; text-decoration: none; margin-top: 10px; }
 .page-heading { margin-bottom: 24px; }
 .products-layout { display: grid; gap: 22px; }
+.product-category-tabs { display: flex; flex-wrap: wrap; gap: 5px; border-bottom: 1px solid var(--line); margin: 0 0 16px; }
 .product-editor-layout { max-width: 900px; }
 .cms-users-layout { max-width: 900px; }
 .image-trash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }

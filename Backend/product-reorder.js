@@ -19,17 +19,21 @@ window.createProductReorder = ({ render, persist, onSaved, onError, onBusy }) =>
   let draggedId = null;
   let busy = false;
   let session = 0;
+  let category = null;
   const markers = new Set();
   const clearMarkers = () => { markers.forEach((row) => row.classList.remove('drop-before', 'drop-after')); markers.clear(); };
 
   async function move(id, targetId, after) {
     if (busy || id === targetId) return;
     const previous = products;
-    const from = previous.findIndex((item) => item.id === id);
-    if (from < 0 || !previous.some((item) => item.id === targetId)) return;
-    const next = [...previous];
-    const [item] = next.splice(from, 1);
-    next.splice(next.findIndex((entry) => entry.id === targetId) + (after ? 1 : 0), 0, item);
+    const visible = category ? previous.filter((item) => item.category === category) : previous;
+    const from = visible.findIndex((item) => item.id === id);
+    if (from < 0 || !visible.some((item) => item.id === targetId)) return;
+    const reordered = [...visible];
+    const [item] = reordered.splice(from, 1);
+    reordered.splice(reordered.findIndex((entry) => entry.id === targetId) + (after ? 1 : 0), 0, item);
+    let position = 0;
+    const next = category ? previous.map((item) => item.category === category ? reordered[position++] : item) : reordered;
     if (next.every((entry, index) => entry.id === previous[index].id)) return;
     const token = session;
     products = next;
@@ -54,6 +58,7 @@ window.createProductReorder = ({ render, persist, onSaved, onError, onBusy }) =>
 
   return {
     get busy() { return busy; },
+    setCategory(value) { if (!busy) { category = value; draggedId = null; clearMarkers(); } },
     setProducts(items) { products = items; },
     clear() { session++; products = []; draggedId = null; clearMarkers(); onBusy(false); },
     decorate(row, product) {
@@ -95,8 +100,9 @@ window.createProductReorder = ({ render, persist, onSaved, onError, onBusy }) =>
       handle.addEventListener('keydown', async (event) => {
         if (busy || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
         event.preventDefault();
-        const index = products.findIndex((item) => item.id === product.id);
-        const target = products[index + (event.key === 'ArrowUp' ? -1 : 1)];
+        const visible = category ? products.filter((item) => item.category === category) : products;
+        const index = visible.findIndex((item) => item.id === product.id);
+        const target = visible[index + (event.key === 'ArrowUp' ? -1 : 1)];
         if (!target) return;
         await move(product.id, target.id, event.key === 'ArrowDown');
         if (tokenSession === session) document.getElementById(`product-handle-${product.id}`)?.focus();

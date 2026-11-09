@@ -11,8 +11,10 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
   const previewImage = document.getElementById('cms-order-image');
   const previewMessage = document.getElementById('cms-order-preview-message');
   const statuses = ['new', 'confirmed', 'processing', 'shipping', 'completed', 'cancelled'];
+  const orderTabs = ['all', ...statuses];
   const canonicalStatus = (value) => ({ making: 'processing', shipped: 'shipping' }[value] || value);
   const statusLabel = (value) => {
+    if (value === 'all') return 'All orders';
     const canonical = canonicalStatus(value);
     return canonical[0].toUpperCase() + canonical.slice(1);
   };
@@ -45,14 +47,14 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
   }
 
   function selectStatus(value, refresh = true) {
-    if (!statuses.includes(value)) return;
+    if (!orderTabs.includes(value)) return;
     activeStatus = value;
     page = 0;
     updateStatusTabs();
     if (refresh) return load();
   }
 
-  statuses.forEach((value, index) => {
+  orderTabs.forEach((value, index) => {
     const button = node('button');
     const count = node('span', '—', 'order-tab-count');
     button.id = `order-tab-${value}`;
@@ -62,13 +64,13 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
     button.append(node('span', statusLabel(value)), count);
     button.addEventListener('click', () => selectStatus(value));
     button.addEventListener('keydown', (event) => {
-      const target = event.key === 'ArrowRight' ? (index + 1) % statuses.length
-        : event.key === 'ArrowLeft' ? (index + statuses.length - 1) % statuses.length
-        : event.key === 'Home' ? 0 : event.key === 'End' ? statuses.length - 1 : -1;
+      const target = event.key === 'ArrowRight' ? (index + 1) % orderTabs.length
+        : event.key === 'ArrowLeft' ? (index + orderTabs.length - 1) % orderTabs.length
+        : event.key === 'Home' ? 0 : event.key === 'End' ? orderTabs.length - 1 : -1;
       if (target < 0) return;
       event.preventDefault();
-      statusTabs.get(statuses[target]).button.focus();
-      selectStatus(statuses[target]);
+      statusTabs.get(orderTabs[target]).button.focus();
+      selectStatus(orderTabs[target]);
     });
     tabs.append(button);
     statusTabs.set(value, { button, count });
@@ -76,6 +78,7 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
   updateStatusTabs();
 
   function withStatus(query, value) {
+    if (value === 'all') return query;
     const legacy = { processing: 'making', shipping: 'shipped' }[value];
     return legacy ? query.in('status', [value, legacy]) : query.eq('status', value);
   }
@@ -104,7 +107,7 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
     try {
       const data = await getOrderOverview();
       if (token !== generation) return;
-      statusTabs.forEach(({ count }, value) => { count.textContent = String(data[value] || 0); });
+      statusTabs.forEach(({ count }, value) => { count.textContent = String((value === 'all' ? data.total : data[value]) || 0); });
       onNewCount(data.new || 0);
     } catch {
       if (token === generation) {
@@ -245,7 +248,7 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
         feedback.textContent = 'Order saved.';
         // A tab switch while the PATCH is in flight must not hide a successful
         // save or leave a previously loaded Completed tab showing stale data.
-        if (token === generation && order.status !== activeStatus) await selectStatus(order.status);
+        if (token === generation && activeStatus !== 'all' && order.status !== activeStatus) await selectStatus(order.status);
         else await load();
         if (sessionToken === sessionGeneration) setStatus(`Order saved as ${statusLabel(order.status)}.`);
       } catch (error) {
@@ -307,7 +310,7 @@ window.createOrdersManager = (client, setStatus, onCount, openOrders = () => {},
         return load();
       }
       list.replaceChildren(...data.map(renderOrder));
-      message.textContent = data.length ? '' : `No ${statusLabel(activeStatus).toLowerCase()} orders.`;
+      message.textContent = data.length ? '' : activeStatus === 'all' ? 'No orders.' : `No ${statusLabel(activeStatus).toLowerCase()} orders.`;
       pageLabel.textContent = `Page ${page + 1} of ${Math.max(1, Math.ceil(total / pageSize))}`;
       previous.disabled = page === 0;
       next.disabled = (page + 1) * pageSize >= total;

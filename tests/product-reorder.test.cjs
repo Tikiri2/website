@@ -15,7 +15,7 @@ class Element {
     return this.events[name]?.({ preventDefault() {}, dataTransfer: { setData() {}, setDragImage() {} }, ...extras });
   }
 }
-const fixture = () => ['a', 'b', 'c'].map((id, index) => ({ id, name: id.toUpperCase(), price: 500, display_order: index + 1 }));
+const fixture = () => ['a', 'b', 'c'].map((id, index) => ({ id, name: id.toUpperCase(), category: index === 1 ? 'sandals' : 'heels', price: 500, display_order: index + 1 }));
 function setup(options = {}) {
   const state = { renders: [], writes: [], saved: 0, errors: [], busy: [], rows: [] };
   const context = { window: {}, document: { createElement: () => new Element(), getElementById: () => null } };
@@ -107,4 +107,28 @@ test('concurrent edits stop persistence instead of silently overwriting position
   const { persist } = setup();
   const query = { update() { return query; }, eq() { return query; }, async select() { return { data: [], error: null }; } };
   await assert.rejects(persist({ from: () => query }, [...fixture()].reverse()), /changed in another session/);
+});
+test('category drag reorders only matching product slots and preserves hidden categories', async () => {
+  const { manager, state } = setup();
+  manager.setCategory('heels');
+  await state.rows[0].children[0].emit('dragstart');
+  await state.rows[2].emit('drop', { clientY: 145 });
+  assert.deepEqual(Array.from(state.writes[0]), ['c', 'b', 'a']);
+  assert.equal(state.writes[0][1], 'b');
+});
+test('category keyboard movement skips hidden products, while All restores global movement', async () => {
+  const { manager, state } = setup();
+  manager.setCategory('heels');
+  await state.rows[0].children[0].emit('keydown', { key: 'ArrowDown' });
+  assert.deepEqual(Array.from(state.writes[0]), ['c', 'b', 'a']);
+  manager.setCategory(null);
+  await state.rows[0].children[0].emit('keydown', { key: 'ArrowDown' });
+  assert.deepEqual(Array.from(state.writes[1]), ['b', 'c', 'a']);
+});
+test('a hidden-category target cannot be reordered from the active category', async () => {
+  const { manager, state } = setup();
+  manager.setCategory('heels');
+  await state.rows[0].children[0].emit('dragstart');
+  await state.rows[1].emit('drop', { clientY: 145 });
+  assert.equal(state.writes.length, 0);
 });

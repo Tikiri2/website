@@ -12,7 +12,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../Backend/admin.css" />
-    <link rel="stylesheet" href="../Backend/dashboard.css?v=image-trash" />
+    <link rel="stylesheet" href="../Backend/dashboard.css?v=product-category-tabs" />
   </head>
   <body>
     <header class="admin-header">
@@ -126,9 +126,17 @@
         <div id="products-tab" class="products-layout" hidden>
           <section class="panel inventory-panel">
             <div class="section-heading"><div class="inventory-title"><h2>Inventory</h2><span id="inventory-count" class="count-pill">0 products</span></div><div class="row-actions"><button class="button button-primary" type="button" data-goto="add-product">Add product</button><button id="refresh-products" class="text-button" type="button">Refresh</button></div></div>
+            <div class="product-category-tabs" role="tablist" aria-label="Product categories">
+              <button id="product-category-all" class="order-status-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="product-category-panel" data-product-category="all">All products <span class="order-tab-count" data-category-count="all">0</span></button>
+              <button id="product-category-heels" class="order-status-tab" type="button" role="tab" aria-selected="false" aria-controls="product-category-panel" tabindex="-1" data-product-category="heels">Heels <span class="order-tab-count" data-category-count="heels">0</span></button>
+              <button id="product-category-sandals" class="order-status-tab" type="button" role="tab" aria-selected="false" aria-controls="product-category-panel" tabindex="-1" data-product-category="sandals">Sandals <span class="order-tab-count" data-category-count="sandals">0</span></button>
+            </div>
             <p class="field-help">Drag the ⠿ handle to change product order. Changes save automatically.</p>
             <p id="product-reorder-message" class="field-help" role="status" aria-live="polite"></p>
+            <div id="product-category-panel" role="tabpanel" aria-labelledby="product-category-all">
             <div id="product-list" class="product-list"></div>
+            <p id="product-category-empty" class="panel-description" role="status" hidden>No products in this category.</p>
+            </div>
           </section>
         </div>
 
@@ -266,10 +274,10 @@
     </dialog>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../cms-config.js"></script>
-    <script src="../Backend/orders.js"></script>
+    <script src="../Backend/orders.js?v=all-orders-tab"></script>
     <script src="../Backend/product-colours.js?v=image-strip"></script>
-    <script src="../Backend/product-reorder.js"></script>
+    <script src="../Backend/product-reorder.js?v=category-tabs"></script>
     <script src="../Backend/image-trash.js"></script>
-    <script src="../Backend/admin.js?v=image-trash"></script>
+    <script src="../Backend/admin.js?v=product-category-tabs"></script>
   </body>
 </html>
