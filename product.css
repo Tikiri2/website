@@ -116,11 +116,11 @@ img { display: block; max-width: 100%; }
 .phone-field input[aria-invalid="true"] { border-color: #b33551; }
 .form-message { display: none; margin: 0; font-size: 11px; color: #b33551; }
 .form-message.is-error { display: block; }
-.button-order { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 50px; padding: 10px 17px; border: 0; border-radius: 12px; background: #382934; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 7px 16px -7px #38293460; transition: background .2s, transform .2s; }
+.button-order { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 42px; padding: 8px 16px; border: 0; border-radius: 10px; background: #382934; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 7px 16px -7px #38293460; transition: background .2s, transform .2s; }
 .button-order:hover { background: #914c6a; transform: translateY(-1px); }
 .button-order:active { transform: translateY(1px); }
-.button-order svg { width: 21px; height: 21px; }
-.order-arrow { margin-left: auto; font-size: 20px; font-weight: 400; }
+.button-order svg { width: 19px; height: 19px; }
+.order-arrow { display: none; }
 .order-reassurance { margin: 0; color: var(--muted); text-align: center; font-size: 10px; }
 
 @media (min-width: 821px) and (max-height: 720px) {

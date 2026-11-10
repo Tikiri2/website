@@ -91,10 +91,12 @@ Deno.serve(async (req) => {
       if (productError) throw productError;
       if (!product?.published) return respond({ error: 'This product is no longer available. Please return to the shop.' }, 400);
       if (product.price !== input.expected_price) return respond({ error: 'The price has changed. Reload this page before ordering.' }, 409);
+      const shortShareToken = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, '0')).join('') + '0'.repeat(20);
       const { data, error } = await db.from('orders').insert({
         request_key: input.request_key, product_id: product.id, product_name: product.name,
         colour: input.colour.trim(), shoe_size: input.size, heel_height: input.heel,
         customer_phone: input.phone, product_price: product.price, courier_fee: 250,
+        image_share_token: shortShareToken,
       }).select().single();
       if (error) {
         // A retry can arrive while the first request is finishing.

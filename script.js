@@ -202,6 +202,14 @@ document.addEventListener('DOMContentLoaded', () => {
       .filter(Boolean);
   }
 
+  function isProductInStock(product) {
+    if (typeof product?.in_stock === 'boolean') return product.in_stock;
+    if (Array.isArray(product?.colors) && typeof product.colors[0]?.in_stock === 'boolean') {
+      return product.colors[0].in_stock;
+    }
+    return true;
+  }
+
   function openProductPage(card) {
     const url = new URL('product.html', window.location.href);
     if (card.dataset.id) url.searchParams.set('id', card.dataset.id);
@@ -215,6 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
           name: card.dataset.name || '',
           price: Number(card.dataset.price) || 0,
           category: card.dataset.category || '',
+          in_stock: card.dataset.inStock !== 'false',
           description: card.querySelector('.product-info p')?.textContent || '',
           image_url: card.querySelector('img')?.getAttribute('src') || '',
           image_alt: card.querySelector('img')?.alt || '',
@@ -230,6 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageWrap = card.querySelector('.product-image');
     if (!imageWrap) return;
 
+    const inStock = card.dataset.inStock !== 'false';
+    card.classList.toggle('is-out-of-stock', !inStock);
+
     if (!card.hasAttribute('tabindex')) {
       card.tabIndex = 0;
       card.setAttribute('role', 'link');
@@ -244,17 +256,28 @@ document.addEventListener('DOMContentLoaded', () => {
       card.append(inner);
     }
 
-    if (!card.querySelector('.order-now-button')) {
-      const orderButton = document.createElement('button');
+    let orderButton = card.querySelector('.order-now-button');
+    if (!orderButton) {
+      orderButton = document.createElement('button');
       orderButton.type = 'button';
       orderButton.className = 'order-now-button';
-      orderButton.append(document.createTextNode('Order Now '));
-      const orderArrow = document.createElement('span');
-      orderArrow.setAttribute('aria-hidden', 'true');
-      orderArrow.textContent = '↗';
-      orderButton.append(orderArrow);
       imageWrap.insertAdjacentElement('afterend', orderButton);
     }
+    orderButton.textContent = inStock ? 'Order Now' : 'Pre order now';
+
+    let meta = inner.querySelector('.product-meta');
+    if (!meta) {
+      meta = document.createElement('div');
+      meta.className = 'product-meta';
+      inner.append(meta);
+    }
+    let stockBadge = meta.querySelector('.product-stock');
+    if (!stockBadge) {
+      stockBadge = document.createElement('span');
+      meta.append(stockBadge);
+    }
+    stockBadge.className = `product-stock ${inStock ? 'is-in' : 'is-out'}`;
+    stockBadge.textContent = inStock ? 'In stock' : 'Out of stock';
 
     if (imageWrap.querySelector('.product-actions')) return;
 
@@ -283,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.dataset.category = product.category;
     card.dataset.name = product.name;
     card.dataset.price = product.price;
+    card.dataset.inStock = String(isProductInStock(product));
     card.dataset.reveal = '';
 
     const inner = document.createElement('div');
@@ -372,11 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
       image.loading = 'lazy';
 
       const label = document.createElement('span');
-      label.append(document.createTextNode(`${item.title} `));
-      const arrow = document.createElement('b');
-      arrow.setAttribute('aria-hidden', 'true');
-      arrow.textContent = '↗';
-      label.append(arrow);
+      label.textContent = item.title;
 
       tile.append(image, label);
       return tile;
@@ -535,15 +555,117 @@ document.addEventListener('DOMContentLoaded', () => {
     mainNav.classList.toggle('is-open', !isOpen);
   });
 
-  sortSelect.addEventListener('change', () => {
-    const sortedCards = [...cards].sort((first, second) => {
-      const difference = Number(first.dataset.price) - Number(second.dataset.price);
-      if (sortSelect.value === 'low-high') return difference;
-      if (sortSelect.value === 'high-low') return -difference;
-      return cards.indexOf(first) - cards.indexOf(second);
+  const sortDropdown = document.getElementById('sort-dropdown');
+  const sortToggle = document.getElementById('sort-toggle');
+  const sortMenu = document.getElementById('sort-menu');
+  const sortLabel = document.getElementById('sort-current-label');
+  const sortOptions = sortMenu ? [...sortMenu.querySelectorAll('.sort-option')] : [];
+
+  function closeSortMenu() {
+    if (!sortDropdown || !sortMenu) return;
+    sortDropdown.classList.remove('is-open');
+    sortMenu.hidden = true;
+    sortToggle?.setAttribute('aria-expanded', 'false');
+  }
+
+  function openSortMenu() {
+    if (!sortDropdown || !sortMenu) return;
+    sortDropdown.classList.add('is-open');
+    sortMenu.hidden = false;
+    sortToggle?.setAttribute('aria-expanded', 'true');
+    sortMenu.style.left = '';
+    sortMenu.style.right = '';
+    const rect = sortMenu.getBoundingClientRect();
+    if (rect.left < 10) {
+      sortMenu.style.left = '0';
+      sortMenu.style.right = 'auto';
+    } else if (rect.right > window.innerWidth - 10) {
+      sortMenu.style.left = 'auto';
+      sortMenu.style.right = '0';
+    }
+    const active = sortMenu.querySelector('.sort-option.is-active') || sortOptions[0];
+    active?.focus();
+  }
+
+  if (sortToggle && sortMenu) {
+    sortToggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const isOpen = sortDropdown.classList.contains('is-open');
+      if (isOpen) closeSortMenu();
+      else openSortMenu();
     });
-    sortedCards.forEach((card) => productGrid.append(card));
-  });
+
+    sortOptions.forEach((option) => {
+      const choose = () => {
+        const value = option.dataset.value;
+        const text = option.querySelector('span')?.textContent || option.textContent.trim();
+        if (sortLabel) sortLabel.textContent = text;
+        sortOptions.forEach((opt) => {
+          const isSelected = opt === option;
+          opt.classList.toggle('is-active', isSelected);
+          opt.setAttribute('aria-selected', String(isSelected));
+          opt.tabIndex = isSelected ? 0 : -1;
+        });
+        closeSortMenu();
+        sortToggle?.focus();
+        if (sortSelect && sortSelect.value !== value) {
+          sortSelect.value = value;
+          sortSelect.dispatchEvent(new Event('change'));
+        }
+      };
+
+      option.addEventListener('click', (event) => {
+        event.stopPropagation();
+        choose();
+      });
+
+      option.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          choose();
+        }
+      });
+    });
+
+    document.addEventListener('click', (event) => {
+      if (sortDropdown && !sortDropdown.contains(event.target)) {
+        closeSortMenu();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (!sortDropdown?.classList.contains('is-open')) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSortMenu();
+        sortToggle?.focus();
+        return;
+      }
+      if (['ArrowDown', 'ArrowUp'].includes(event.key)) {
+        event.preventDefault();
+        const currentIndex = sortOptions.indexOf(document.activeElement);
+        let nextIndex;
+        if (event.key === 'ArrowDown') {
+          nextIndex = currentIndex < sortOptions.length - 1 ? currentIndex + 1 : 0;
+        } else {
+          nextIndex = currentIndex > 0 ? currentIndex - 1 : sortOptions.length - 1;
+        }
+        sortOptions[nextIndex]?.focus();
+      }
+    });
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener('change', () => {
+      const sortedCards = [...cards].sort((first, second) => {
+        const difference = Number(first.dataset.price) - Number(second.dataset.price);
+        if (sortSelect.value === 'low-high') return difference;
+        if (sortSelect.value === 'high-low') return -difference;
+        return cards.indexOf(first) - cards.indexOf(second);
+      });
+      sortedCards.forEach((card) => productGrid.append(card));
+    });
+  }
 
   productGrid.addEventListener('click', (event) => {
     const button = event.target.closest('button');
@@ -799,7 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const [{ data, error }, categoriesResult] = await Promise.all([
       client
         .from('products')
-        .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes')
+        .select('*')
         .eq('published', true)
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false }),

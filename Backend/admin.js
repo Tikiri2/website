@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('dashboard-tab').hidden = tab !== 'dashboard';
     document.getElementById('users-tab').hidden = tab !== 'users';
     document.getElementById('image-trash-tab').hidden = tab !== 'image-trash';
-    document.getElementById('cms-page-heading').hidden = tab === 'orders' || tab === 'products';
+    document.getElementById('cms-page-heading').hidden = true;
     panelTitle.textContent = tab === 'image-trash' ? 'Image trash' : tab === 'users' ? 'CMS users' : tab === 'add-product' ? (editingId ? 'Edit product' : 'Add product')
       : tab === 'dashboard' ? 'Dashboard' : tab === 'orders' ? 'Orders' : tab === 'products' ? 'Products' : 'Homepage';
     panelDescription.textContent =
@@ -841,6 +841,46 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeTab === 'orders') ordersManager.load();
   }
 
+  function isProductInStock(product) {
+    if (typeof product?.in_stock === 'boolean') return product.in_stock;
+    if (Array.isArray(product?.colors) && typeof product.colors[0]?.in_stock === 'boolean') {
+      return product.colors[0].in_stock;
+    }
+    return true;
+  }
+
+  function withStockMetadata(colors, inStock) {
+    if (!Array.isArray(colors) || !colors.length) return colors;
+    return colors.map((colour, index) => (index === 0 ? { ...colour, in_stock: inStock } : colour));
+  }
+
+  async function toggleProductStock(product, button) {
+    const nextInStock = !isProductInStock(product);
+    const updatedColors = withStockMetadata(product.colors, nextInStock);
+    if (button) button.disabled = true;
+    try {
+      let { error } = await client
+        .from('products')
+        .update({ in_stock: nextInStock, colors: updatedColors })
+        .eq('id', product.id);
+      if (error && /in_stock|column|schema cache/i.test(error.message)) {
+        const retry = await client
+          .from('products')
+          .update({ colors: updatedColors })
+          .eq('id', product.id);
+        error = retry.error;
+      }
+      if (error) throw new Error(error.message);
+      product.in_stock = nextInStock;
+      product.colors = updatedColors;
+      renderProductInventory(inventoryProducts);
+      setStatus(`"${product.name}" marked ${nextInStock ? 'In stock' : 'Out of stock'}.`);
+    } catch (error) {
+      if (button) button.disabled = false;
+      setStatus(`Could not update stock status: ${error.message}`, true);
+    }
+  }
+
   function createProductRow(product) {
     const row = document.createElement('article');
     row.className = 'product-row';
@@ -863,16 +903,24 @@ document.addEventListener('DOMContentLoaded', () => {
     image.src = imageCandidates[0];
     row.append(image);
 
+    const inStock = isProductInStock(product);
     const details = document.createElement('div');
     details.className = 'product-row-details';
     const name = document.createElement('h3');
     name.textContent = product.name;
     const meta = document.createElement('p');
-    meta.textContent = `${product.category} · Rs. ${Number(product.price).toLocaleString('en-LK')} · ${product.published ? 'Published' : 'Draft'}`;
+    meta.textContent = `${product.category} · Rs. ${Number(product.price).toLocaleString('en-LK')} · ${product.published ? 'Published' : 'Draft'} · ${inStock ? 'In stock' : 'Out of stock'}`;
     details.append(name, meta);
 
     const actions = document.createElement('div');
     actions.className = 'row-actions';
+    const stockButton = document.createElement('button');
+    stockButton.className = `stock-toggle ${inStock ? 'is-in-stock' : 'is-out-of-stock'}`;
+    stockButton.type = 'button';
+    stockButton.setAttribute('aria-pressed', String(inStock));
+    stockButton.title = inStock ? 'Click to mark Out of stock' : 'Click to mark In stock';
+    stockButton.textContent = inStock ? 'In stock' : 'Out of stock';
+    stockButton.addEventListener('click', () => toggleProductStock(product, stockButton));
     const editButton = document.createElement('button');
     editButton.className = 'text-button';
     editButton.type = 'button';
@@ -883,8 +931,8 @@ document.addEventListener('DOMContentLoaded', () => {
     deleteButton.type = 'button';
     deleteButton.textContent = 'Delete';
     deleteButton.addEventListener('click', () => deleteProduct(product));
-    actions.append(editButton, deleteButton);
-    editButton.disabled = deleteButton.disabled = !!productReorder?.busy;
+    actions.append(stockButton, editButton, deleteButton);
+    stockButton.disabled = editButton.disabled = deleteButton.disabled = !!productReorder?.busy;
 
     row.append(details, actions);
     productReorder?.decorate(row, product);
@@ -1134,7 +1182,7 @@ document.addEventListener('DOMContentLoaded', () => {
     await loadCategories();
     const { data, error } = await client
       .from('products')
-      .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes, published, display_order')
+      .select('*')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false });
     if (error) {
@@ -1170,6 +1218,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (input.type === 'checkbox') input.checked = Boolean(value);
       else input.value = field === 'image_url' ? normalizeAssetPath(value ?? '') : value ?? '';
     }
+    const inStockInput = productForm.elements.namedItem('in_stock');
+    if (inStockInput) inStockInput.checked = isProductInStock(product);
     colourEditor.setValue(product.colors, product.image_url);
     syncCategoryDropdownSelection();
     setCategoryDropdownOpen(false);
@@ -1258,14 +1308,21 @@ document.addEventListener('DOMContentLoaded', () => {
       return client.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl;
     };
     try {
-      productFields.colors = await colourEditor.upload(colourSnapshot, uploadProductImage);
+      const inStock = formData.has('in_stock');
+      const uploadedColors = await colourEditor.upload(colourSnapshot, uploadProductImage);
+      productFields.colors = withStockMetadata(uploadedColors, inStock);
       const imageUrl = colourEditor.coverImage(productFields.colors);
 
-      const product = { ...productFields, image_url: imageUrl };
-      const query = productIdToSave
-        ? client.from('products').update(product).eq('id', productIdToSave)
-        : client.from('products').insert(product);
-      const { error } = await query;
+      const product = { ...productFields, image_url: imageUrl, in_stock: inStock };
+      const saveQuery = (payload) => (productIdToSave
+        ? client.from('products').update(payload).eq('id', productIdToSave)
+        : client.from('products').insert(payload));
+      let { error } = await saveQuery(product);
+      if (error && /in_stock|column|schema cache/i.test(error.message)) {
+        const { in_stock: _ignored, ...fallbackProduct } = product;
+        const retry = await saveQuery(fallbackProduct);
+        error = retry.error;
+      }
       if (error) throw new Error(`Could not save product: ${error.message}`);
       productSaved = true;
 

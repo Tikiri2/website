@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=20261109-headings-hero-2" />
+    <link rel="stylesheet" href="styles.css?v=hero-mood-v5" />
   </head>
   <body>
     <a class="skip-link" href="#shop">Skip to shop</a>
@@ -83,7 +83,7 @@
             <p class="hero-description" data-cms="hero_description">Heels &amp; sandals, made for your moments.</p>
             <div class="hero-actions">
               <a class="button button-light" href="#shop" data-cms-href="hero_cta_url">
-                <span data-cms="hero_cta_label">Explore the edit</span> <span aria-hidden="true">↗</span>
+                <span data-cms="hero_cta_label">Explore the edit</span>
               </a>
             </div>
           </div>
@@ -101,19 +101,19 @@
         <div class="category-grid" data-cms-cards="mood">
           <a class="category-tile" href="#shop" data-nav-filter="heels" data-reveal>
             <img src="Backend/assets/heel-pink.jpg" alt="Pink heels for an evening out" loading="lazy" />
-            <span>Night out <b aria-hidden="true">↗</b></span>
+            <span>Night out</span>
           </a>
           <a class="category-tile" href="#shop" data-nav-filter="sandals" data-reveal>
             <img src="Backend/assets/mood-soft-lovely.jpg" alt="Elegant cream sandal against a warm pink studio backdrop" loading="lazy" />
-            <span>Soft &amp; lovely <b aria-hidden="true">↗</b></span>
+            <span>Soft &amp; lovely</span>
           </a>
           <a class="category-tile" href="#shop" data-nav-filter="sandals" data-reveal>
             <img src="Backend/assets/mood-everyday-ease.jpg" alt="Comfortable white sandals worn against lush green leaves" loading="lazy" />
-            <span>Everyday ease <b aria-hidden="true">↗</b></span>
+            <span>Everyday ease</span>
           </a>
           <a class="category-tile" href="#shop" data-nav-filter="heels" data-reveal>
             <img src="Backend/assets/mood-golden-hour.jpg" alt="Golden sandals glowing in the late afternoon sun" loading="lazy" />
-            <span>Golden hour <b aria-hidden="true">↗</b></span>
+            <span>Golden hour</span>
           </a>
         </div>
       </section>
@@ -134,14 +134,39 @@
             <button class="category-button" type="button" data-filter="sandals" aria-pressed="false">Sandals</button>
           </div>
           <div class="shop-tools">
-            <label class="sort-box">
-              <span class="visually-hidden">Sort products</span>
-              <select id="product-sort" aria-label="Sort products">
+            <div class="sort-dropdown" id="sort-dropdown">
+              <button class="sort-toggle" id="sort-toggle" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Sort products">
+                <span class="sort-label" id="sort-current-label">Featured</span>
+                <svg class="sort-arrow" viewBox="0 0 10 6" width="10" height="6" aria-hidden="true">
+                  <path d="M1 1L5 5L9 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <ul class="sort-menu" id="sort-menu" role="listbox" aria-label="Sort options" hidden>
+                <li class="sort-option is-active" role="option" data-value="featured" aria-selected="true" tabindex="0">
+                  <span>Featured</span>
+                  <svg class="sort-check" viewBox="0 0 12 10" width="12" height="10" aria-hidden="true">
+                    <path d="M1 5L4 8L11 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </li>
+                <li class="sort-option" role="option" data-value="low-high" aria-selected="false" tabindex="-1">
+                  <span>Price: low to high</span>
+                  <svg class="sort-check" viewBox="0 0 12 10" width="12" height="10" aria-hidden="true">
+                    <path d="M1 5L4 8L11 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </li>
+                <li class="sort-option" role="option" data-value="high-low" aria-selected="false" tabindex="-1">
+                  <span>Price: high to low</span>
+                  <svg class="sort-check" viewBox="0 0 12 10" width="12" height="10" aria-hidden="true">
+                    <path d="M1 5L4 8L11 1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </li>
+              </ul>
+              <select id="product-sort" aria-label="Sort products" class="visually-hidden" tabindex="-1">
                 <option value="featured">Featured</option>
                 <option value="low-high">Price: low to high</option>
                 <option value="high-low">Price: high to low</option>
               </select>
-            </label>
+            </div>
           </div>
         </div>
 
@@ -419,6 +444,6 @@
     <div class="toast" role="status" aria-live="polite"></div>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="cms-config.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=hero-mood-v5"></script>
   </body>
 </html>

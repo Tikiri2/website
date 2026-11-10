@@ -108,6 +108,15 @@ test('viewer sends fragment capability in POST body, not request URL', async () 
   get('order-view-image').events.load();
   assert.equal(get('order-view-image').hidden, false);
 });
+test('viewer decodes compact 22-char base64url fragment token to 32-char hex', async () => {
+  // 16 bytes of 0xaa ('aa'.repeat(16)) -> base64url 'qqqqqqqqqqqqqqqqqqqqqg'
+  const shortHash = '#qqqqqqqqqqqqqqqqqqqqqg';
+  const { get, calls } = viewer(shortHash);
+  await new Promise(setImmediate);
+  assert.equal(calls.length, 1);
+  assert.equal(JSON.parse(calls[0].options.body).token, token);
+  assert.equal(get('order-view-image').src, 'https://example.test/image');
+});
 test('viewer handles invalid and expired links safely', async () => {
   const invalid = viewer('#bad');
   assert.equal(invalid.calls.length, 0);

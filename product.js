@@ -367,6 +367,13 @@
 
     document.title = `Customize ${product.name || 'your pair'} — ${STORE_NAME}`;
     renderColours();
+    const inStock = typeof product.in_stock === 'boolean'
+      ? product.in_stock
+      : !(Array.isArray(product.colors) && product.colors[0]?.in_stock === false);
+    state.inStock = inStock;
+    els.orderButton.disabled = false;
+    const orderLabel = els.orderButton.querySelector('span');
+    if (orderLabel) orderLabel.textContent = inStock ? 'Confirm & order' : 'Pre-order now';
   }
 
   /* ---------------------------------------------------------
@@ -590,6 +597,49 @@
     return { file: new File([blob], 'venu-order.png', { type: 'image/png' }), hasImage: !!image };
   }
 
+  const B64URL = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  function encodeShortToken(hex) {
+    if (!/^[a-f0-9]{32}$/.test(hex)) return hex;
+    let bits = 0;
+    let count = 0;
+    let out = '';
+    for (let i = 0; i < 32; i += 2) {
+      bits = (bits << 8) | parseInt(hex.slice(i, i + 2), 16);
+      count += 8;
+      while (count >= 6) {
+        count -= 6;
+        out += B64URL[(bits >> count) & 63];
+      }
+    }
+    if (count > 0) {
+      out += B64URL[(bits << (6 - count)) & 63];
+    }
+    return out.replace(/A+$/, '') || 'AAAAAAAA';
+  }
+
+  function formatOrderDate(dateValue) {
+    const date = dateValue ? new Date(dateValue) : new Date();
+    const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+    return safeDate.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  function formatOrderNumber(orderId, dateValue) {
+    const date = dateValue ? new Date(dateValue) : new Date();
+    const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+    const yyyy = safeDate.getFullYear();
+    const mm = String(safeDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(safeDate.getDate()).padStart(2, '0');
+    const shortCode = String(orderId || '')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 2)
+      .toUpperCase() || '01';
+    return `VN-${yyyy}${mm}${dd}-${shortCode}`;
+  }
+
   document.getElementById('close-order').addEventListener('click', () => orderDialog.close());
 
   let saveFeedbackTimer;
@@ -597,7 +647,8 @@
     if (!orderImageURL) return;
     const link = document.createElement('a');
     link.href = orderImageURL;
-    link.download = `venu-order-${savedOrder?.id ? savedOrder.id.slice(0, 8) : 'card'}.png`;
+    const orderNo = savedOrder?.order_no || (savedOrder?.id ? formatOrderNumber(savedOrder.id) : 'card');
+    link.download = `venu-order-${orderNo}.png`;
     document.body.append(link);
     link.click();
     link.remove();
@@ -630,11 +681,25 @@
 
   shareOrderButton.addEventListener('click', () => {
     if (!savedOrder) return;
+    const orderNo = savedOrder.order_no || formatOrderNumber(savedOrder.id, savedOrder.ordered_at);
+    const orderDate = savedOrder.order_date || formatOrderDate(savedOrder.ordered_at);
+    const price = Number(state.product?.price) || 0;
+    const total = formatPrice(price + COURIER_FEE);
+    const productName = state.product?.name || 'Custom Pair';
+    const colourName = state.colour?.name || 'Original';
     const message = [
-      `Hi ${STORE_NAME}, I'd like to order this custom pair.`,
-      `Order: ${savedOrder.id}`,
-      `Order image (link valid for 7 days):`,
+      `${STORE_NAME} — Custom Order`,
+      '',
+      `Order No: ${orderNo}`,
+      `Date: ${orderDate}`,
+      `Item: ${productName}`,
+      `Details: ${colourName} | EU ${state.size} | ${state.heel} cm heel`,
+      `Total: ${total} (incl. delivery)`,
+      '',
+      `Order Card (7-day link):`,
       savedOrder.share_url || savedOrder.image_url,
+      '',
+      `Please confirm availability & delivery details. Thank you!`,
     ].join('\n');
     // Navigate directly from the click, without asynchronous popup blocking.
     window.location.assign(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`);
@@ -662,9 +727,13 @@
     let result;
     try { result = await response.json(); } catch { throw new Error('The order service is unavailable. Please try again later.'); }
     if (!response.ok || !result.id || !result.image_url) throw new Error(result.error || 'Could not save your order. Please try again.');
+    const now = new Date();
+    result.ordered_at = now.toISOString();
+    result.order_no = formatOrderNumber(result.id, now);
+    result.order_date = formatOrderDate(now);
     if (/^[a-f0-9]{32}$/.test(result.share_token || '')) {
-      const link = new URL('order.html', window.location.href);
-      link.hash = result.share_token;
+      const link = new URL('o/', window.location.href);
+      link.hash = encodeShortToken(result.share_token);
       result.share_url = link.href;
     }
     return result;
@@ -739,7 +808,7 @@
       document.getElementById('order-card-image').src = orderImageURL;
       saveOrderButton.textContent = 'Save image ↓';
       shareOrderButton.textContent = 'Continue to WhatsApp ↗';
-      shareNote.textContent = `Order ${savedOrder.id.slice(0, 8)} saved. Continue to WhatsApp and tap Send to send your order image link to the shop. The link expires in 7 days. Your order is confirmed only after the shop replies.`;
+      shareNote.textContent = `Order ${savedOrder.order_no} (${savedOrder.order_date}) saved. Continue to WhatsApp and tap Send to share your order summary and 7-day order card link with the shop.`;
       if (!result.hasImage) shareNote.textContent += ' Product photo could not load; your order details are included.';
       orderDialog.showModal();
     } catch (error) {

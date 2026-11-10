@@ -11,8 +11,8 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../Backend/admin.css" />
-    <link rel="stylesheet" href="../Backend/dashboard.css?v=category-dropdown-v2" />
+    <link rel="stylesheet" href="../Backend/admin.css?v=orders-bar-v5" />
+    <link rel="stylesheet" href="../Backend/dashboard.css?v=orders-bar-v5" />
   </head>
   <body>
     <header class="admin-header">
@@ -40,7 +40,7 @@
       </section>
 
       <section id="cms-panel" hidden>
-        <div class="page-heading" id="cms-page-heading">
+        <div class="page-heading" id="cms-page-heading" hidden>
           <div>
             <p class="eyebrow">Your store</p>
             <h1 id="panel-title">Dashboard</h1>
@@ -144,6 +144,7 @@
                   <input name="sizes" placeholder="36, 37, 38, 39, 40" />
                   <span class="field-help">Comma separated. Used by the custom order page. Leave blank for 36–40.</span>
                 </label>
+              <label class="checkbox-label"><input name="in_stock" type="checkbox" checked /> In stock (available to order)</label>
               <label class="checkbox-label"><input name="published" type="checkbox" checked /> Show this product in the shop</label>
               <button id="save-product" class="button button-primary" type="submit">Add product</button>
             </form>
@@ -301,10 +302,10 @@
     </dialog>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../cms-config.js"></script>
-    <script src="../Backend/orders.js?v=all-orders-tab"></script>
+    <script src="../Backend/orders.js?v=orders-bar-v5"></script>
     <script src="../Backend/product-colours.js?v=categories-colour-picker"></script>
     <script src="../Backend/product-reorder.js?v=category-tabs"></script>
     <script src="../Backend/image-trash.js"></script>
-    <script src="../Backend/admin.js?v=category-dropdown-v2"></script>
+    <script src="../Backend/admin.js?v=orders-bar-v4"></script>
   </body>
 </html>
