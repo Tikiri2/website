@@ -16,6 +16,108 @@ window.createProductColourEditor = (resolveImageUrl) => {
     if (row.previewURL) URL.revokeObjectURL(row.previewURL);
     row.previewURL = '';
   };
+  function normalizeHex(value) {
+    const hex = `#${String(value || '').trim().replace(/^#/, '')}`;
+    return /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(hex) ? hex.toLowerCase() : '';
+  }
+  function toSixDigit(hex) {
+    let value = hex.replace('#', '');
+    if (value.length <= 4) value = value.slice(0, 3).split('').map((part) => part + part).join('');
+    return `#${value.slice(0, 6)}`;
+  }
+  const toHex = (r, g, b) => `#${[r, g, b].map((part) => part.toString(16).padStart(2, '0')).join('')}`;
+
+  // Full-size photo overlay: hover to preview, click to pick the colour under the cursor.
+  function openPhotoPicker(src, currentHex, onPick, onError) {
+    const overlay = node('div', undefined, 'colour-picker-overlay');
+    const panel = node('div', undefined, 'colour-picker-panel');
+    const heading = node('div', undefined, 'colour-picker-heading');
+    const title = node('strong', 'Click the shoe to pick its colour');
+    const close = node('button', '×', 'colour-picker-close');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Close colour picker');
+    heading.append(title, close);
+    const stage = node('div', undefined, 'colour-picker-stage');
+    const canvas = node('canvas');
+    const loupe = node('span', undefined, 'colour-picker-loupe');
+    stage.append(canvas, loupe);
+    const footer = node('div', undefined, 'colour-picker-footer');
+    const hoverSwatch = node('span', undefined, 'colour-swatch colour-swatch-lg');
+    const hoverText = node('span', currentHex, 'colour-picker-value');
+    const pickedLabel = node('span', 'Selected:', 'colour-picker-label');
+    const pickedSwatch = node('span', undefined, 'colour-swatch colour-swatch-lg');
+    const pickedText = node('span', currentHex, 'colour-picker-value');
+    const useButton = node('button', 'Use this colour', 'button button-primary');
+    useButton.type = 'button';
+    footer.append(hoverSwatch, hoverText, pickedLabel, pickedSwatch, pickedText, useButton);
+    panel.append(heading, stage, footer);
+    overlay.append(panel);
+    document.body.append(overlay);
+
+    let picked = normalizeHex(currentHex) || '#d9c9cf';
+    hoverSwatch.style.background = pickedSwatch.style.background = picked;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const finish = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (event) => { if (event.key === 'Escape') finish(); };
+    document.addEventListener('keydown', onKey);
+    close.addEventListener('click', finish);
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) finish(); });
+    useButton.addEventListener('click', () => { onPick(picked); finish(); });
+
+    const sample = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor(((event.clientX - rect.left) / rect.width) * canvas.width);
+      const y = Math.floor(((event.clientY - rect.top) / rect.height) * canvas.height);
+      if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return null;
+      // Average a small 5×5 area so a single noisy pixel doesn't skew the colour.
+      const size = 5;
+      const sx = Math.max(0, x - 2);
+      const sy = Math.max(0, y - 2);
+      const data = ctx.getImageData(sx, sy, Math.min(size, canvas.width - sx), Math.min(size, canvas.height - sy)).data;
+      let r = 0; let g = 0; let b = 0; let n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 128) continue;
+        r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+      }
+      if (!n) return null;
+      return { hex: toHex(Math.round(r / n), Math.round(g / n), Math.round(b / n)), x: event.clientX - rect.left, y: event.clientY - rect.top };
+    };
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const scale = Math.min(1, 1200 / Math.max(img.naturalWidth, img.naturalHeight));
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      try { ctx.getImageData(0, 0, 1, 1); } catch {
+        finish();
+        onError('This photo cannot be sampled. Re-upload the photo, then pick the colour.');
+        return;
+      }
+      canvas.addEventListener('pointermove', (event) => {
+        const result = sample(event);
+        if (!result) return;
+        hoverSwatch.style.background = result.hex;
+        hoverText.textContent = result.hex;
+        loupe.style.left = `${result.x}px`;
+        loupe.style.top = `${result.y}px`;
+        loupe.style.background = result.hex;
+        loupe.hidden = false;
+      });
+      canvas.addEventListener('pointerleave', () => { loupe.hidden = true; });
+      canvas.addEventListener('click', (event) => {
+        const result = sample(event);
+        if (!result) return;
+        picked = result.hex;
+        pickedSwatch.style.background = picked;
+        pickedText.textContent = picked;
+      });
+    };
+    img.onerror = () => { finish(); onError('Photo could not load for colour picking.'); };
+    img.src = src;
+    loupe.hidden = true;
+  }
   function addRow(source = {}) {
     const row = { source: { ...source }, image: source.image || source.image_url || '', previewURL: '', file: null };
     const card = node('div', undefined, 'product-colour-row');
@@ -27,13 +129,29 @@ window.createProductColourEditor = (resolveImageUrl) => {
     row.name.maxLength = 60;
     row.name.placeholder = 'Rose';
     nameLabel.append(row.name);
-    const hexLabel = node('label', 'Colour hex');
+    const hexLabel = node('label', 'Colour', 'colour-value-field');
     row.hex = node('input');
     row.hex.value = String(source.hex || source.value || '#d9c9cf');
     row.hex.required = true;
     row.hex.pattern = '#?([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})';
     row.hex.placeholder = '#c93728';
-    hexLabel.append(row.hex);
+    row.hex.className = 'colour-hex-input';
+    // Native colour wheel + a large swatch showing the selected colour.
+    const picker = node('input');
+    picker.type = 'color';
+    picker.className = 'colour-wheel';
+    picker.title = 'Choose a colour';
+    const swatch = node('span', undefined, 'colour-swatch');
+    swatch.setAttribute('aria-hidden', 'true');
+    const syncSwatch = () => {
+      const hex = normalizeHex(row.hex.value);
+      swatch.style.background = hex || 'transparent';
+      swatch.title = hex || 'Invalid colour';
+      if (hex) picker.value = toSixDigit(hex);
+    };
+    row.hex.addEventListener('input', syncSwatch);
+    picker.addEventListener('input', () => { row.hex.value = picker.value; syncSwatch(); });
+    hexLabel.append(row.hex, picker, swatch);
     fields.append(nameLabel, hexLabel);
     const preview = node('div', undefined, 'colour-photo-preview');
     const image = node('img');
@@ -48,8 +166,9 @@ window.createProductColourEditor = (resolveImageUrl) => {
     const actions = node('div', undefined, 'row-actions');
     const clearImage = node('button', 'Remove photo', 'text-button');
     const remove = node('button', 'Remove colour', 'text-button delete-button');
-    clearImage.type = remove.type = 'button';
-    actions.append(clearImage, remove);
+    const pickFromPhoto = node('button', '◉ Pick colour from photo', 'text-button colour-pick-button');
+    clearImage.type = remove.type = pickFromPhoto.type = 'button';
+    actions.append(clearImage, remove, pickFromPhoto);
     const error = node('p', '', 'colour-upload-error');
     error.setAttribute('role', 'status');
     const renderPhoto = () => {
@@ -66,6 +185,7 @@ window.createProductColourEditor = (resolveImageUrl) => {
       photoNote.title = photoNote.textContent;
       image.title = photoNote.textContent;
       clearImage.disabled = !row.file && !row.image;
+      pickFromPhoto.disabled = !row.previewURL && !row.image;
     };
     input.addEventListener('change', () => {
       const file = input.files?.[0];
@@ -95,10 +215,22 @@ window.createProductColourEditor = (resolveImageUrl) => {
       update();
     });
     image.addEventListener('error', () => { photoNote.textContent = 'Photo preview could not load. You can upload a replacement.'; });
+    const openRowPhotoPicker = () => {
+      const src = row.previewURL || resolveImageUrl(row.image);
+      if (!src) return;
+      openPhotoPicker(src, row.hex.value, (hex) => {
+        row.hex.value = hex;
+        syncSwatch();
+        error.textContent = '';
+      }, (message) => { error.textContent = message; });
+    };
+    pickFromPhoto.addEventListener('click', openRowPhotoPicker);
+    preview.addEventListener('click', openRowPhotoPicker);
     card.append(fields, preview, uploadLabel, actions, error);
     rows.push(row);
     list.append(card);
     renderPhoto();
+    syncSwatch();
     update();
   }
   add.addEventListener('click', () => { if (rows.length < 8) addRow(); });

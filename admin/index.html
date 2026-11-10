@@ -12,7 +12,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../Backend/admin.css" />
-    <link rel="stylesheet" href="../Backend/dashboard.css?v=product-category-tabs" />
+    <link rel="stylesheet" href="../Backend/dashboard.css?v=category-dropdown-v2" />
   </head>
   <body>
     <header class="admin-header">
@@ -84,12 +84,39 @@
               <label>Product name<input name="name" maxlength="100" required /></label>
               <label>Short description<input name="description" maxlength="180" required /></label>
               <div class="field-row">
-                <label>Category
-                  <select name="category" required>
+                <div class="category-field">
+                  <label for="category-dropdown-trigger">Category</label>
+                  <select name="category" required hidden>
                     <option value="heels">Heels</option>
                     <option value="sandals">Sandals</option>
                   </select>
-                </label>
+                  <div class="category-dropdown" id="category-dropdown">
+                    <button
+                      id="category-dropdown-trigger"
+                      class="category-dropdown-trigger"
+                      type="button"
+                      aria-haspopup="listbox"
+                      aria-expanded="false"
+                    >
+                      <span id="category-dropdown-label">Heels</span>
+                      <span class="category-dropdown-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div id="category-dropdown-menu" class="category-dropdown-menu" hidden>
+                      <div id="category-dropdown-list" class="category-dropdown-list" role="listbox" aria-label="Categories"></div>
+                      <div class="category-dropdown-add">
+                        <input
+                          id="new-category-input"
+                          type="text"
+                          maxlength="40"
+                          placeholder="New category name…"
+                          aria-label="New category name"
+                        />
+                        <button id="add-category" class="button button-primary" type="button">+ Add</button>
+                      </div>
+                      <p id="category-dropdown-error" class="category-dropdown-error" role="status" hidden></p>
+                    </div>
+                  </div>
+                </div>
                 <label>Price (Rs.)<input name="price" type="number" min="1" step="1" required /></label>
               </div>
               <label>Image description<input name="image_alt" maxlength="180" required /></label>
@@ -275,9 +302,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../cms-config.js"></script>
     <script src="../Backend/orders.js?v=all-orders-tab"></script>
-    <script src="../Backend/product-colours.js?v=image-strip"></script>
+    <script src="../Backend/product-colours.js?v=categories-colour-picker"></script>
     <script src="../Backend/product-reorder.js?v=category-tabs"></script>
     <script src="../Backend/image-trash.js"></script>
-    <script src="../Backend/admin.js?v=product-category-tabs"></script>
+    <script src="../Backend/admin.js?v=category-dropdown-v2"></script>
   </body>
 </html>

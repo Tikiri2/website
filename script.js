@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
      Elements
      --------------------------------------------------------- */
   let cards = [...document.querySelectorAll('.product-card')];
-  const categoryButtons = [...document.querySelectorAll('.category-button')];
+  let categoryButtons = [...document.querySelectorAll('.category-button')];
   const sortSelect = document.getElementById('product-sort');
   const productGrid = document.getElementById('product-grid');
   const resultCount = document.getElementById('result-count');
@@ -480,17 +480,41 @@ document.addEventListener('DOMContentLoaded', () => {
     emptyState.hidden = visibleCount !== 0;
   }
 
-  categoryButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      activeFilter = button.dataset.filter;
-      categoryButtons.forEach((item) => {
-        const isActive = item === button;
-        item.classList.toggle('is-active', isActive);
-        item.setAttribute('aria-pressed', String(isActive));
-      });
-      filterProducts();
+  const categoryList = document.querySelector('.category-list');
+  function setActiveFilter(filter) {
+    activeFilter = filter;
+    categoryButtons.forEach((item) => {
+      const isActive = item.dataset.filter === filter;
+      item.classList.toggle('is-active', isActive);
+      item.setAttribute('aria-pressed', String(isActive));
     });
+    filterProducts();
+  }
+
+  // Delegated so buttons added for CMS categories work too.
+  categoryList?.addEventListener('click', (event) => {
+    const button = event.target.closest('.category-button');
+    if (button) setActiveFilter(button.dataset.filter);
   });
+
+  function renderCategoryButtons(categories) {
+    if (!categoryList || !categories.length) return;
+    const make = (slug, label) => {
+      const button = document.createElement('button');
+      button.className = 'category-button';
+      button.type = 'button';
+      button.dataset.filter = slug;
+      button.setAttribute('aria-pressed', 'false');
+      button.textContent = label;
+      return button;
+    };
+    // Only show categories that currently have products, so empty filters don't appear.
+    const used = new Set(cards.map((card) => card.dataset.category));
+    const visible = categories.filter((category) => used.has(category.slug));
+    categoryList.replaceChildren(make('all', 'All styles'), ...visible.map((category) => make(category.slug, category.label)));
+    categoryButtons = [...categoryList.querySelectorAll('.category-button')];
+    setActiveFilter(categoryButtons.some((button) => button.dataset.filter === activeFilter) ? activeFilter : 'all');
+  }
 
   const closeMenu = () => {
     mainNav.classList.remove('is-open');
@@ -501,7 +525,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const link = event.target.closest('[data-nav-filter]');
     if (!link) return;
     const matchingButton = categoryButtons.find((button) => button.dataset.filter === link.dataset.navFilter);
-    matchingButton?.click();
+    if (matchingButton) setActiveFilter(matchingButton.dataset.filter);
     closeMenu();
   });
 
@@ -772,16 +796,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadCmsProducts(client) {
-    const { data, error } = await client
-      .from('products')
-      .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes')
-      .eq('published', true)
-      .in('category', ['heels', 'sandals'])
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: false });
+    const [{ data, error }, categoriesResult] = await Promise.all([
+      client
+        .from('products')
+        .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes')
+        .eq('published', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false }),
+      client
+        .from('product_categories')
+        .select('slug, label, display_order')
+        .order('display_order', { ascending: true }),
+    ]);
 
     if (error) throw new Error(`Products: ${error.message}`);
     renderProducts(data || []);
+    // Before the categories migration runs, fall back to the built-in filters.
+    const categories = categoriesResult.error || !categoriesResult.data?.length
+      ? [{ slug: 'heels', label: 'Heels' }, { slug: 'sandals', label: 'Sandals' }]
+      : categoriesResult.data;
+    renderCategoryButtons(categories);
   }
 
   async function loadSiteContent(client) {

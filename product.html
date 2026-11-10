@@ -18,7 +18,7 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="product.css?v=mobile-keyboard-layout" />
+    <link rel="stylesheet" href="product.css?v=order-card-v2" />
   </head>
   <body>
     <header class="custom-header">
@@ -169,7 +169,19 @@
       <div class="order-dialog-heading">
         <div>
           <p>YOUR CUSTOM PAIR</p>
-          <h2 id="order-dialog-title">Ready to make it yours?</h2>
+          <h2 class="order-success-badge" id="order-dialog-title">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle cx="10" cy="10" r="9" fill="currentColor" opacity="0.16" />
+              <path
+                d="M6.2 10.2 8.8 12.8 14 7.6"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span>Successfully order sent</span>
+          </h2>
         </div>
         <button
           class="dialog-close"
@@ -193,9 +205,9 @@
         aria-live="polite"
       ></p>
       <div class="order-dialog-actions">
-        <a class="save-order" id="save-order" download="venu-order.png"
-          >Save image ↓</a
-        >
+        <button class="save-order" id="save-order" type="button">
+          Save image ↓
+        </button>
         <button class="button-order" id="share-order" type="button">
           Confirm and Order ↗
         </button>
@@ -203,6 +215,6 @@
     </dialog>
 
     <script src="cms-config.js"></script>
-    <script src="product.js?v=mobile-keyboard-layout"></script>
+    <script src="product.js?v=order-card-v2"></script>
   </body>
 </html>

@@ -53,7 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let productTotal = 0;
   let inventoryProducts = [];
   let activeProductCategory = 'all';
-  const productCategoryButtons = [...document.querySelectorAll('[data-product-category]')];
+  let productCategoryButtons = [...document.querySelectorAll('[data-product-category]')];
+  // Categories come from the product_categories table; these defaults keep the
+  // CMS usable until the categories migration has been applied.
+  let productCategories = [{ slug: 'heels', label: 'Heels' }, { slug: 'sandals', label: 'Sandals' }];
   let productReorder;
   let imageTrash;
   let cardTotal = 0;
@@ -906,13 +909,229 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setProductCategory(category) {
-    if (productReorder?.busy || !['all', 'heels', 'sandals'].includes(category)) return;
+    if (productReorder?.busy || (category !== 'all' && !productCategories.some((item) => item.slug === category))) return;
     activeProductCategory = category;
     productReorder?.setCategory(category === 'all' ? null : category);
     renderProductInventory(inventoryProducts);
   }
 
+  const LOCAL_CATEGORIES_KEY = 'venu.cms.categories';
+  const categoryDropdown = document.getElementById('category-dropdown');
+  const categoryDropdownTrigger = document.getElementById('category-dropdown-trigger');
+  const categoryDropdownLabel = document.getElementById('category-dropdown-label');
+  const categoryDropdownMenu = document.getElementById('category-dropdown-menu');
+  const categoryDropdownList = document.getElementById('category-dropdown-list');
+  const newCategoryInput = document.getElementById('new-category-input');
+  const categoryDropdownError = document.getElementById('category-dropdown-error');
+
+  function slugifyCategory(label) {
+    return String(label || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  }
+
+  function readLocalCategories() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(LOCAL_CATEGORIES_KEY) || 'null');
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  function writeLocalCategories(categories) {
+    try { localStorage.setItem(LOCAL_CATEGORIES_KEY, JSON.stringify(categories)); } catch { /* ignore */ }
+  }
+
+  function setCategoryDropdownError(message = '') {
+    if (!categoryDropdownError) return;
+    categoryDropdownError.textContent = message;
+    categoryDropdownError.hidden = !message;
+  }
+
+  function setCategoryDropdownOpen(open) {
+    if (!categoryDropdownMenu || !categoryDropdownTrigger) return;
+    categoryDropdownMenu.hidden = !open;
+    categoryDropdownTrigger.setAttribute('aria-expanded', String(open));
+    if (!open) setCategoryDropdownError('');
+  }
+
+  function syncCategoryDropdownSelection() {
+    const select = productForm.elements.namedItem('category');
+    const selected = productCategories.find((item) => item.slug === select.value) || productCategories[0];
+    if (selected && select.value !== selected.slug) select.value = selected.slug;
+    if (categoryDropdownLabel) categoryDropdownLabel.textContent = selected ? selected.label : 'Select category';
+    if (!categoryDropdownList) return;
+    categoryDropdownList.replaceChildren(...productCategories.map((category) => {
+      const isSelected = selected?.slug === category.slug;
+      const row = document.createElement('div');
+      row.className = `category-dropdown-row${isSelected ? ' is-selected' : ''}`;
+
+      const selectBtn = document.createElement('button');
+      selectBtn.type = 'button';
+      selectBtn.className = 'category-dropdown-select';
+      selectBtn.setAttribute('role', 'option');
+      selectBtn.setAttribute('aria-selected', String(isSelected));
+      const text = document.createElement('span');
+      text.textContent = category.label;
+      const check = document.createElement('span');
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = isSelected ? '✓' : '';
+      selectBtn.append(text, check);
+      selectBtn.addEventListener('click', () => {
+        select.value = category.slug;
+        syncCategoryDropdownSelection();
+        setCategoryDropdownOpen(false);
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'category-dropdown-delete';
+      deleteBtn.textContent = '×';
+      deleteBtn.title = `Delete ${category.label}`;
+      deleteBtn.setAttribute('aria-label', `Delete ${category.label}`);
+      deleteBtn.addEventListener('click', (event) => {
+        event.stopPropagation();
+        deleteCategory(category).catch((error) => setCategoryDropdownError(`Could not delete category: ${error.message}`));
+      });
+
+      row.append(selectBtn, deleteBtn);
+      return row;
+    }));
+  }
+
+  function renderCategoryControls() {
+    const select = productForm.elements.namedItem('category');
+    const current = select.value;
+    select.replaceChildren(...productCategories.map((category) => {
+      const option = document.createElement('option');
+      option.value = category.slug;
+      option.textContent = category.label;
+      return option;
+    }));
+    if (productCategories.some((category) => category.slug === current)) select.value = current;
+    syncCategoryDropdownSelection();
+
+    const cardFilter = cardForm?.elements.namedItem('link_filter');
+    if (cardFilter) {
+      const currentFilter = cardFilter.value;
+      const noneOption = document.createElement('option');
+      noneOption.value = '';
+      noneOption.textContent = 'No filter';
+      cardFilter.replaceChildren(noneOption, ...productCategories.map((category) => {
+        const option = document.createElement('option');
+        option.value = category.slug;
+        option.textContent = category.label;
+        return option;
+      }));
+      cardFilter.value = productCategories.some((category) => category.slug === currentFilter) ? currentFilter : '';
+    }
+
+    const tabs = document.querySelector('.product-category-tabs');
+    const makeTab = (slug, label) => {
+      const button = document.createElement('button');
+      button.id = `product-category-${slug}`;
+      button.className = 'order-status-tab';
+      button.type = 'button';
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-controls', 'product-category-panel');
+      button.dataset.productCategory = slug;
+      const count = document.createElement('span');
+      count.className = 'order-tab-count';
+      count.dataset.categoryCount = slug;
+      count.textContent = '0';
+      button.append(`${label} `, count);
+      return button;
+    };
+    tabs.replaceChildren(makeTab('all', 'All products'), ...productCategories.map((item) => makeTab(item.slug, item.label)));
+    productCategoryButtons = [...tabs.querySelectorAll('[data-product-category]')];
+    if (activeProductCategory !== 'all' && !productCategories.some((item) => item.slug === activeProductCategory)) {
+      activeProductCategory = 'all';
+      productReorder?.setCategory(null);
+    }
+  }
+
+  async function loadCategories() {
+    const { data, error } = await client
+      .from('product_categories')
+      .select('slug, label, display_order')
+      .order('display_order', { ascending: true })
+      .order('label', { ascending: true });
+    if (error) {
+      // Table missing (migration not applied yet): use local categories or built-in defaults.
+      const local = readLocalCategories();
+      if (local) productCategories = local;
+    } else if (data.length) {
+      productCategories = data;
+      writeLocalCategories(data);
+    }
+    renderCategoryControls();
+  }
+
+  async function addCategory() {
+    const label = String(newCategoryInput?.value || '').trim().slice(0, 40);
+    if (!label) {
+      setCategoryDropdownError('Type a category name first.');
+      newCategoryInput?.focus();
+      return;
+    }
+    const slug = slugifyCategory(label);
+    if (!slug) {
+      setCategoryDropdownError('Use letters or numbers in the category name.');
+      newCategoryInput?.focus();
+      return;
+    }
+    setCategoryDropdownError('');
+    const existing = productCategories.find((item) => item.slug === slug);
+    if (!existing) {
+      const display_order = Math.max(0, ...productCategories.map((item) => Number(item.display_order) || 0)) + 1;
+      const { error } = await client.from('product_categories').insert({ slug, label, display_order });
+      if (error && !/relation|does not exist|schema cache/i.test(error.message)) {
+        setCategoryDropdownError(`Could not add category: ${error.message}`);
+        return;
+      }
+      if (error) {
+        productCategories = [...productCategories, { slug, label, display_order }];
+        writeLocalCategories(productCategories);
+        renderCategoryControls();
+      } else {
+        await loadCategories();
+      }
+      renderProductInventory(inventoryProducts);
+      setStatus(`Category "${label}" added.`);
+    }
+    if (newCategoryInput) newCategoryInput.value = '';
+    productForm.elements.namedItem('category').value = slug;
+    syncCategoryDropdownSelection();
+  }
+
+  async function deleteCategory(category) {
+    setCategoryDropdownError('');
+    if (productCategories.length <= 1) {
+      setCategoryDropdownError('Keep at least one category.');
+      return;
+    }
+    const usedCount = inventoryProducts.filter((product) => product.category === category.slug).length;
+    if (usedCount > 0) {
+      setCategoryDropdownError(`Cannot delete "${category.label}" while ${usedCount} product(s) use it.`);
+      return;
+    }
+    const { error } = await client.from('product_categories').delete().eq('slug', category.slug);
+    if (error && !/relation|does not exist|schema cache/i.test(error.message)) {
+      setCategoryDropdownError(`Could not delete category: ${error.message}`);
+      return;
+    }
+    productCategories = productCategories.filter((item) => item.slug !== category.slug);
+    writeLocalCategories(productCategories);
+    const select = productForm.elements.namedItem('category');
+    if (select.value === category.slug && productCategories[0]) {
+      select.value = productCategories[0].slug;
+    }
+    renderCategoryControls();
+    renderProductInventory(inventoryProducts);
+    setStatus(`Category "${category.label}" deleted.`);
+  }
+
   async function loadProducts() {
+    await loadCategories();
     const { data, error } = await client
       .from('products')
       .select('id, name, description, category, price, image_url, image_alt, badge, image_tone, colors, sizes, published, display_order')
@@ -952,6 +1171,8 @@ document.addEventListener('DOMContentLoaded', () => {
       else input.value = field === 'image_url' ? normalizeAssetPath(value ?? '') : value ?? '';
     }
     colourEditor.setValue(product.colors, product.image_url);
+    syncCategoryDropdownSelection();
+    setCategoryDropdownOpen(false);
     productForm.elements.namedItem('sizes').value = formatSizeOptions(product.sizes);
     formTitle.textContent = 'Edit product';
     saveButton.textContent = 'Save changes';
@@ -965,6 +1186,8 @@ document.addEventListener('DOMContentLoaded', () => {
     colourEditor.setValue([]);
     editingId = null;
     productForm.reset();
+    syncCategoryDropdownSelection();
+    setCategoryDropdownOpen(false);
     productForm.elements.namedItem('display_order').value = '0';
     formTitle.textContent = 'Add a product';
     saveButton.textContent = 'Add product';
@@ -1122,18 +1345,45 @@ document.addEventListener('DOMContentLoaded', () => {
   tabButtons.forEach((button) => {
     button.addEventListener('click', () => setTab(button.dataset.tab));
   });
-  productCategoryButtons.forEach((button, index) => {
-    button.addEventListener('click', () => setProductCategory(button.dataset.productCategory));
-    button.addEventListener('keydown', (event) => {
-      if (productReorder?.busy) return;
-      const target = event.key === 'ArrowRight' ? (index + 1) % productCategoryButtons.length
-        : event.key === 'ArrowLeft' ? (index + productCategoryButtons.length - 1) % productCategoryButtons.length
-        : event.key === 'Home' ? 0 : event.key === 'End' ? productCategoryButtons.length - 1 : -1;
-      if (target < 0) return;
+  // Delegated so tabs added for new categories work without re-binding.
+  const productCategoryTabs = document.querySelector('.product-category-tabs');
+  productCategoryTabs.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-product-category]');
+    if (button) setProductCategory(button.dataset.productCategory);
+  });
+  productCategoryTabs.addEventListener('keydown', (event) => {
+    const index = productCategoryButtons.indexOf(event.target.closest('[data-product-category]'));
+    if (index < 0 || productReorder?.busy) return;
+    const target = event.key === 'ArrowRight' ? (index + 1) % productCategoryButtons.length
+      : event.key === 'ArrowLeft' ? (index + productCategoryButtons.length - 1) % productCategoryButtons.length
+      : event.key === 'Home' ? 0 : event.key === 'End' ? productCategoryButtons.length - 1 : -1;
+    if (target < 0) return;
+    event.preventDefault();
+    setProductCategory(productCategoryButtons[target].dataset.productCategory);
+    productCategoryButtons[target].focus();
+  });
+  categoryDropdownTrigger?.addEventListener('click', () => {
+    setCategoryDropdownOpen(categoryDropdownMenu.hidden);
+  });
+  document.addEventListener('click', (event) => {
+    if (categoryDropdown && !categoryDropdownMenu?.hidden && !categoryDropdown.contains(event.target)) {
+      setCategoryDropdownOpen(false);
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !categoryDropdownMenu?.hidden) {
+      setCategoryDropdownOpen(false);
+      categoryDropdownTrigger?.focus();
+    }
+  });
+  newCategoryInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
       event.preventDefault();
-      setProductCategory(productCategoryButtons[target].dataset.productCategory);
-      productCategoryButtons[target].focus();
-    });
+      addCategory().catch((error) => setCategoryDropdownError(`Could not add category: ${error.message}`));
+    }
+  });
+  document.getElementById('add-category').addEventListener('click', () => {
+    addCategory().catch((error) => setCategoryDropdownError(`Could not add category: ${error.message}`));
   });
   document.querySelectorAll('[data-goto]').forEach((button) => {
     button.addEventListener('click', () => setTab(button.dataset.goto));

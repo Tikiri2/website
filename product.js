@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   'use strict';
 
   const WHATSAPP_NUMBER = '94775356524';
@@ -10,6 +10,7 @@
   let orderRequestKey = '';
   let orderFingerprint = '';
   const orderDialog = document.getElementById('order-dialog');
+  const saveOrderButton = document.getElementById('save-order');
   const shareOrderButton = document.getElementById('share-order');
   const shareNote = document.getElementById('share-note');
 
@@ -507,21 +508,21 @@
     ctx.fillStyle = '#fffaf7';
     ctx.fillRect(0, 0, 900, 1280);
     ctx.fillStyle = '#382934';
-    ctx.fillRect(0, 0, 900, 144);
+    ctx.fillRect(0, 0, 900, 124);
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 42px Georgia';
-    ctx.fillText(STORE_NAME, 60, 70);
+    ctx.font = 'bold 40px Georgia';
+    ctx.fillText(STORE_NAME, 60, 60);
     ctx.fillStyle = '#e8bdcf';
-    ctx.font = '18px sans-serif';
-    ctx.fillText('YOUR CUSTOM ORDER  /  MADE FOR YOU', 60, 110);
-    ctx.fillStyle = '#f4e8ed';
-    ctx.fillRect(60, 174, 780, 360);
+    ctx.font = '17px sans-serif';
+    ctx.fillText('YOUR CUSTOM ORDER  /  MADE FOR YOU', 60, 96);
     if (image) {
-      const scale = Math.min(740 / image.width, 330 / image.height);
+      const boxWidth = 820;
+      const boxHeight = 416;
+      const scale = Math.min(boxWidth / image.width, boxHeight / image.height);
       const width = image.width * scale;
       const height = image.height * scale;
       const x = (900 - width) / 2;
-      const y = 189 + (330 - height) / 2;
+      const y = 148 + (boxHeight - height) / 2;
       ctx.save();
       ctx.filter = els.preview.style.filter || 'none';
       ctx.drawImage(image, x, y, width, height);
@@ -537,13 +538,15 @@
     } else {
       ctx.fillStyle = '#897a83';
       ctx.font = '24px sans-serif';
-      ctx.fillText('Product image unavailable', 280, 360);
+      ctx.textAlign = 'center';
+      ctx.fillText('Product image unavailable', 450, 356);
+      ctx.textAlign = 'left';
     }
     ctx.fillStyle = '#a54d70';
-    ctx.font = '17px sans-serif';
-    ctx.fillText('ORDER SUMMARY', 60, 582);
+    ctx.font = '16px sans-serif';
+    ctx.fillText('ORDER SUMMARY', 60, 602);
     ctx.fillStyle = '#382934';
-    ctx.font = '40px Georgia';
+    ctx.font = '38px Georgia';
     // Fit long CMS product names without clipping the order details.
     const words = String(state.product.name || 'Your pair').split(/\s+/);
     const lines = [''];
@@ -553,34 +556,34 @@
       if (ctx.measureText(candidate).width > 780 && lines[index]) lines.push(word);
       else lines[index] = candidate;
     });
-    lines.slice(0, 2).forEach((line, index) => ctx.fillText(line, 60, 633 + index * 44, 780));
+    lines.slice(0, 2).forEach((line, index) => ctx.fillText(line, 60, 648 + index * 42, 780));
     const row = (label, value, y, bold = false) => {
       ctx.textAlign = 'left';
       ctx.fillStyle = '#897a83';
-      ctx.font = '23px sans-serif';
+      ctx.font = '22px sans-serif';
       ctx.fillText(label, 60, y);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#382934';
-      ctx.font = `${bold ? 'bold ' : ''}25px sans-serif`;
+      ctx.font = `${bold ? 'bold ' : ''}24px sans-serif`;
       ctx.fillText(String(value), 840, y, 560);
       ctx.textAlign = 'left';
     };
-    row('Colour', state.colour?.name || '—', 730);
-    row('Shoe size', `EU ${state.size}`, 780);
-    row('Heel height', `${state.heel} cm`, 830);
+    row('Colour', state.colour?.name || '—', 744);
+    row('Shoe size', `EU ${state.size}`, 788);
+    row('Heel height', `${state.heel} cm`, 832);
     ctx.fillStyle = '#e6d8df';
-    ctx.fillRect(60, 865, 780, 1);
+    ctx.fillRect(60, 862, 780, 1);
     const price = Number(state.product.price) || 0;
-    row('Product price', formatPrice(price), 914);
-    row('Courier delivery', formatPrice(COURIER_FEE), 964);
+    row('Product price', formatPrice(price), 906);
+    row('Courier delivery', formatPrice(COURIER_FEE), 950);
     ctx.fillStyle = '#f0dfe7';
-    ctx.fillRect(40, 996, 820, 88);
-    row('TOTAL', formatPrice(price + COURIER_FEE), 1051, true);
-    row('Customer phone', phone, 1143);
+    ctx.fillRect(40, 980, 820, 78);
+    row('TOTAL', formatPrice(price + COURIER_FEE), 1028, true);
+    row('Customer phone', phone, 1112);
     ctx.fillStyle = '#897a83';
     ctx.font = '18px sans-serif';
-    ctx.fillText('Order enquiry · Confirm availability & delivery on WhatsApp', 60, 1212);
-    ctx.fillText(`WhatsApp: +${WHATSAPP_NUMBER}`, 60, 1245);
+    ctx.fillText('Order enquiry · Confirm availability & delivery on WhatsApp', 60, 1184);
+    ctx.fillText(`WhatsApp: +${WHATSAPP_NUMBER}`, 60, 1218);
     const blob = await new Promise((resolve, reject) => {
       canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Image export failed')), 'image/png');
     });
@@ -588,6 +591,42 @@
   }
 
   document.getElementById('close-order').addEventListener('click', () => orderDialog.close());
+
+  let saveFeedbackTimer;
+  function triggerImageDownload() {
+    if (!orderImageURL) return;
+    const link = document.createElement('a');
+    link.href = orderImageURL;
+    link.download = `venu-order-${savedOrder?.id ? savedOrder.id.slice(0, 8) : 'card'}.png`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    saveOrderButton.textContent = 'Saved ✓';
+    clearTimeout(saveFeedbackTimer);
+    saveFeedbackTimer = window.setTimeout(() => {
+      saveOrderButton.textContent = 'Save image ↓';
+    }, 1800);
+  }
+
+  saveOrderButton.addEventListener('click', async () => {
+    if (!orderFile || !orderImageURL) return;
+    const isAppleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    // On iOS/iPadOS, `<a download>` opens a preview tab instead of saving to Photos;
+    // the OS share sheet lets the user tap "Save Image" straight into their gallery.
+    if (isAppleMobile && navigator.canShare?.({ files: [orderFile] })) {
+      try {
+        await navigator.share({
+          files: [orderFile],
+          title: `${STORE_NAME} Order`,
+        });
+        return;
+      } catch (error) {
+        if (error?.name === 'AbortError') return;
+      }
+    }
+    triggerImageDownload();
+  });
 
   shareOrderButton.addEventListener('click', () => {
     if (!savedOrder) return;
@@ -698,7 +737,7 @@
       if (orderImageURL) URL.revokeObjectURL(orderImageURL);
       orderImageURL = URL.createObjectURL(orderFile);
       document.getElementById('order-card-image').src = orderImageURL;
-      document.getElementById('save-order').href = orderImageURL;
+      saveOrderButton.textContent = 'Save image ↓';
       shareOrderButton.textContent = 'Continue to WhatsApp ↗';
       shareNote.textContent = `Order ${savedOrder.id.slice(0, 8)} saved. Continue to WhatsApp and tap Send to send your order image link to the shop. The link expires in 7 days. Your order is confirmed only after the shop replies.`;
       if (!result.hasImage) shareNote.textContent += ' Product photo could not load; your order details are included.';

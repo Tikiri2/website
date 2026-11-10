@@ -1154,12 +1154,14 @@ p {
 .category-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: center;
   gap: 1rem;
 }
 
 .category-tile {
   position: relative;
   display: block;
+  width: 100%;
   aspect-ratio: 1.16 / 1;
   min-height: 180px;
   max-height: 245px;
